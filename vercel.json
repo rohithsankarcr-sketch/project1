@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/", "destination": "/PlayablePrototype/index.html" },
+    { "source": "/css/(.*)", "destination": "/PlayablePrototype/css/$1" },
+    { "source": "/js/(.*)", "destination": "/PlayablePrototype/js/$1" },
+    { "source": "/assets/(.*)", "destination": "/PlayablePrototype/assets/$1" },
+    { "source": "/PlayablePrototype/(.*)", "destination": "/PlayablePrototype/$1" },
+    { "source": "/(.*)", "destination": "/PlayablePrototype/$1" }
+  ]
+}
