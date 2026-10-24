@@ -165,34 +165,57 @@ class HorrorAudioEngine {
         this.heartbeatBpm = 65 + threat * 65;
     }
 
-    // 3. Distant Thunder Clap
+    // 3. Thunder — sharp crack + deep rolling rumble
     playDistantThunder() {
         if (!this.ctx) return;
         const now = this.ctx.currentTime;
-        const bufferSize = this.ctx.sampleRate * 4;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1;
+        const sr = this.ctx.sampleRate;
+
+        // ── Layer 1: Sharp lightning crack (highpass transient) ──
+        const crackBuf = this.ctx.createBuffer(1, sr * 0.25, sr);
+        const crackData = crackBuf.getChannelData(0);
+        for (let i = 0; i < crackData.length; i++) {
+            crackData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (sr * 0.04));
         }
+        const crackSrc = this.ctx.createBufferSource();
+        crackSrc.buffer = crackBuf;
 
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
+        const crackHP = this.ctx.createBiquadFilter();
+        crackHP.type = 'highpass';
+        crackHP.frequency.setValueAtTime(1800, now);
 
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(120, now);
-        filter.frequency.exponentialRampToValueAtTime(45, now + 3.8);
+        const crackGain = this.ctx.createGain();
+        crackGain.gain.setValueAtTime(0.9, now);
+        crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
 
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.01, now);
-        gain.gain.linearRampToValueAtTime(0.35, now + 0.4);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 3.9);
+        crackSrc.connect(crackHP);
+        crackHP.connect(crackGain);
+        crackGain.connect(this.masterGain);
+        crackSrc.start(now);
 
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.ambienceBus);
-        noise.start(now);
+        // ── Layer 2: Deep rolling rumble (lowpass noise) ──
+        const rumbleBuf = this.ctx.createBuffer(1, sr * 4.5, sr);
+        const rumbleData = rumbleBuf.getChannelData(0);
+        for (let i = 0; i < rumbleData.length; i++) {
+            rumbleData[i] = Math.random() * 2 - 1;
+        }
+        const rumbleSrc = this.ctx.createBufferSource();
+        rumbleSrc.buffer = rumbleBuf;
+
+        const rumbleLP = this.ctx.createBiquadFilter();
+        rumbleLP.type = 'lowpass';
+        rumbleLP.frequency.setValueAtTime(140, now);
+        rumbleLP.frequency.exponentialRampToValueAtTime(48, now + 4.2);
+
+        const rumbleGain = this.ctx.createGain();
+        rumbleGain.gain.setValueAtTime(0.01, now);
+        rumbleGain.gain.linearRampToValueAtTime(0.85, now + 0.08);
+        rumbleGain.gain.exponentialRampToValueAtTime(0.001, now + 4.3);
+
+        rumbleSrc.connect(rumbleLP);
+        rumbleLP.connect(rumbleGain);
+        rumbleGain.connect(this.ambienceBus);
+        rumbleSrc.start(now + 0.05); // Rumble follows the crack
     }
 
     // 4. Dynamic Footsteps (Mud, Stone, Wood)

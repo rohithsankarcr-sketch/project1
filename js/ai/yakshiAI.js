@@ -41,8 +41,15 @@ class JessEntity {
         this.panicTimer = 0.0;
         this.recoveringTimer = 0.0;
         this.manifestTimer = 0.0;
-        this.maxPursuitTime = 16.0; // Fixed: explicitly defined
+        this.maxPursuitTime = 16.0; // How long she chases before breaking off
         this.pursuitTimer = 0.0;
+
+        // Unexpected respawn system
+        this.isDormant = false;          // True while she has vanished and is waiting to respawn
+        this.dormantRespawnMin = 18.0;   // Minimum seconds before she reappears
+        this.dormantRespawnMax = 35.0;   // Maximum seconds before she reappears
+        this.dormantTimer = 0.0;         // Counts up while dormant
+        this.dormantTarget = 0.0;        // Chosen respawn delay for this cycle
 
         // Perception
         this.hasLineOfSight = false;
@@ -329,6 +336,48 @@ class JessEntity {
         }
     }
 
+    // ─── DORMANT VANISH + UNEXPECTED RESPAWN ───
+    _triggerDormantVanish() {
+        this.isDormant = true;
+        this.state = 'Dormant';
+        this.pursuitTimer = 0.0;
+        this.searchTimer = 0.0;
+
+        // Reset arm posture
+        if (this.arms && this.arms.length === 2) {
+            this.arms[0].rotation.x = 0;
+            this.arms[1].rotation.x = 0;
+        }
+
+        // Choose a random respawn delay between min and max
+        this.dormantTimer = 0.0;
+        this.dormantTarget = this.dormantRespawnMin +
+            Math.random() * (this.dormantRespawnMax - this.dormantRespawnMin);
+
+        // Fade out visually
+        this._fadeOut(1.0);
+        setTimeout(() => {
+            if (this.mesh) this.mesh.visible = false;
+        }, 1100);
+    }
+
+    // Tick the dormant respawn timer (called at top of update)
+    _tickDormant(delta) {
+        if (!this.isDormant) return false;
+        this.dormantTimer += delta;
+        if (this.dormantTimer >= this.dormantTarget) {
+            // Pick a random spawn zone far from (0,0,0) to feel surprising
+            const zone = this.spawnZones[Math.floor(Math.random() * this.spawnZones.length)];
+            this.spawnAt(zone.x, zone.y, zone.z);
+            this.isDormant = false;
+            this.state = 'Stalking';
+            this.stateTimer = 0.0;
+            // Optional: brief creepy dialogue on respawn
+            setTimeout(() => this.speakDialogue(), 2200);
+        }
+        return true; // still dormant or just woke up — skip rest of update this tick
+    }
+
     update(delta, playerPos, playerCamFwd, isPlayerHiding, isPlayerCrouched, isPlayerSprinting, flashlightOn) {
         if (!this.mesh) return;
 
@@ -372,6 +421,9 @@ class JessEntity {
                 this.position.addScaledVector(pullDir, Math.min(distToAnchor - this.maxAnchorDistance, 12.0 * delta));
             }
         }
+
+        // ─── DORMANT RESPAWN TICK ───
+        if (this._tickDormant(delta)) return;
 
         // ─── STATE MACHINE ───
 
@@ -424,8 +476,15 @@ class JessEntity {
         if (this.state === 'Hunting') {
             this.pursuitTimer += delta;
 
-            // Stop hunting if player hides or pursuit limit exceeded
-            if (isPlayerHiding || this.pursuitTimer > this.maxPursuitTime) {
+            // Disengage after maxPursuitTime — she vanishes and will unexpectedly respawn later
+            if (this.pursuitTimer > this.maxPursuitTime) {
+                this.pursuitTimer = 0.0;
+                this._triggerDormantVanish();
+                return;
+            }
+
+            // Also disengage if player hides — shorter search then vanish
+            if (isPlayerHiding) {
                 this.state = 'Searching';
                 this.searchTimer = 0.0;
                 this.pursuitTimer = 0.0;
@@ -447,13 +506,13 @@ class JessEntity {
                 this.arms[1].rotation.x = -1.2;
             }
 
-            // ATTACK RANGE (Within 2.2 meters)
+            // ATTACK RANGE (Within 2.4 meters)
             if (distToPlayer < 2.4) {
                 this._executeAttack(playerPos);
                 return;
             }
 
-            // Lost sight at long range
+            // Lost sight at long range — switch to search mode
             if (!this.hasLineOfSight && distToPlayer > 20.0) {
                 this.state = 'Searching';
                 this.searchTimer = 0.0;
@@ -494,7 +553,8 @@ class JessEntity {
                 this.state = 'Hunting';
                 this.pursuitTimer = 0.0;
             } else if (this.searchTimer > 7.0) {
-                this.state = 'Stalking';
+                // After failing to find the player, vanish and respawn elsewhere unexpectedly
+                this._triggerDormantVanish();
             }
             return;
         }
