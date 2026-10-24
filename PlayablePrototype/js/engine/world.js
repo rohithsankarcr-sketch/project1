@@ -84,11 +84,11 @@ class KeralaWorld {
 
     setupLighting() {
         // Near-total darkness — monsoon night
-        this.ambientLight = new THREE.AmbientLight(0x05080f, 0.28);
+        this.ambientLight = new THREE.AmbientLight(0x04070d, 0.18);
         this.scene.add(this.ambientLight);
 
         // Moonlight through storm clouds (very dim blue-white)
-        this.moonLight = new THREE.DirectionalLight(0x8eb4cf, 0.38);
+        this.moonLight = new THREE.DirectionalLight(0x7a9bcf, 0.28);
         this.moonLight.position.set(30, 75, -40);
         this.moonLight.castShadow = true;
         this.moonLight.shadow.mapSize.width = 2048;
@@ -108,7 +108,7 @@ class KeralaWorld {
         this.scene.add(this.lightningLight);
 
         // Player Flashlight — warm tungsten tone
-        this.playerSpotlight = new THREE.SpotLight(0xfff0d6, 5.5, 42, Math.PI / 6.5, 0.28, 1.4);
+        this.playerSpotlight = new THREE.SpotLight(0xfff4dc, 6.8, 48, Math.PI / 5.8, 0.22, 1.25);
         this.playerSpotlight.position.set(0.18, -0.12, -0.05);
         this.playerSpotlight.castShadow = true;
         this.playerSpotlight.shadow.mapSize.width = 1024;

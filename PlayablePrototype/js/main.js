@@ -100,7 +100,7 @@ class AyasGameApplication {
 
         document.addEventListener('mousemove', (e) => {
             if (!this.isPointerLocked || this.isPaused || this.isDead || this.hasWon) return;
-            this.yaw -= e.movementX * this.mouseSensitivity;
+            this.yaw -= e.movementX * (this.mouseSensitivity * 1.0);
             this.pitch -= e.movementY * this.mouseSensitivity;
             this.pitch = Math.max(-Math.PI / 2.1, Math.min(Math.PI / 2.1, this.pitch));
 

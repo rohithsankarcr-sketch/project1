@@ -589,11 +589,29 @@
         }
 
         /* ─── RESPONSIVE ─── */
+        @media (max-width: 1024px) {
+            #objective-card { width: 260px; }
+            #controls-hint { font-size: 8px; max-width: 280px; }
+            #ayas-device-panel { width: 200px; bottom: 100px; }
+            #waveform-canvas { width: 180px; }
+        }
         @media (max-width: 768px) {
-            #minimap-container { width: 110px; height: 110px; }
-            #minimap-canvas { width: 110px; height: 110px; }
-            #objective-card { width: 220px; }
-            .game-title { font-size: 56px; }
+            #minimap-container { width: 90px; height: 90px; display: none; }
+            #minimap-canvas { width: 90px; height: 90px; }
+            #objective-card { width: 200px; top: 8px; left: 8px; }
+            #ward-status-container { top: 8px; padding: 5px 10px; }
+            #bottom-bar { bottom: 8px; left: 8px; }
+            #controls-hint { bottom: 8px; right: 8px; font-size: 7.5px; max-width: 220px; display: none; }
+            #ayas-device-panel { bottom: 70px; right: 8px; width: 180px; display: none; }
+            #ayas-device-panel.active { display: none; }
+            .game-title { font-size: 48px; letter-spacing: 6px; }
+            .game-subtitle { font-size: 12px; letter-spacing: 3px; }
+            .intro-lore { font-size: 12px; max-width: 90%; padding: 0 10px; }
+            #hud-layer { padding: 8px; }
+        }
+        @media (max-height: 700px) {
+            #controls-hint { display: none; }
+            #ayas-device-panel { bottom: 60px; }
         }
     </style>
 </head>

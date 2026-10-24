@@ -11,9 +11,9 @@ class YakshiEntity {
         this.velocity = new THREE.Vector3();
 
         // AI Speeds (units/sec)
-        this.stalkSpeed = 2.4;
-        this.huntSpeed = 6.2;
-        this.retreatSpeed = 8.5;
+        this.stalkSpeed = 3.4;
+        this.huntSpeed = 8.0;
+        this.retreatSpeed = 11.0;
 
         // Timers & Cooldowns
         this.stateTimer = 0.0;

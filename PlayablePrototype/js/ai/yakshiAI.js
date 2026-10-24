@@ -12,22 +12,22 @@ class YakshiEntity {
         this.velocity = new THREE.Vector3();
 
         // AI Speeds
-        this.stalkSpeed = 2.8;
-        this.huntSpeed = 6.8;
-        this.retreatSpeed = 10.0;
+        this.stalkSpeed = 3.8;
+        this.huntSpeed = 8.5;
+        this.retreatSpeed = 12.0;
         this.currentSpeed = 0;
 
         // Timers & Cooldowns
         this.stateTimer = 0.0;
-        this.lureCooldown = 12.0;
+        this.lureCooldown = 10.0;
         this.ankletTimer = 0.0;
         this.searchTimer = 0.0;
         this.randomSpawnTimer = 0.0;
-        this.randomSpawnInterval = 25 + Math.random() * 20; // random 25-45s
+        this.randomSpawnInterval = 18 + Math.random() * 22; // more frequent random spawns 18-40s
 
         // Scare & Jump Scare System
         this.jumpScareTimer = 0.0;
-        this.jumpScareCooldown = 30.0;
+        this.jumpScareCooldown = 22.0;
         this.hasJumpScared = false;
         this.disappearTimer = 0.0;
 
@@ -39,22 +39,24 @@ class YakshiEntity {
         // Visual animation
         this._bobTimer = 0;
         this._glitchTimer = 0;
-        this._scaredAlpha = 0.88;
+        this._scaredAlpha = 0.92;
 
-        // Spawn zone pool (unexpected locations throughout the map)
+        // Spawn zone pool (unexpected locations throughout the map) - more varied
         this.spawnZones = [
             // Behind trees where player wouldn't normally look
-            new THREE.Vector3(-10, 0, -18),  // just behind entry area
+            new THREE.Vector3(-10, 0, -18),
             new THREE.Vector3(8, 0, -35),
-            new THREE.Vector3(-14, 0, -55),
+            new THREE.Vector3(-16, 0, -48),
             new THREE.Vector3(12, 0, -62),
-            new THREE.Vector3(-14, 0, -75),  // near Pala tree
-            new THREE.Vector3(-5, 0, -78),
-            new THREE.Vector3(14, 0, -88),   // near house flank
-            new THREE.Vector3(-8, 0, -98),
-            new THREE.Vector3(10, 0, -112),
-            new THREE.Vector3(-12, 0, -128),
-            new THREE.Vector3(0, 0, -145),   // near shrine road
+            new THREE.Vector3(-18, 0, -70),  // near Pala tree - very unexpected
+            new THREE.Vector3(-5, 0, -82),
+            new THREE.Vector3(16, 0, -88),   // near house flank
+            new THREE.Vector3(-12, 0, -98),
+            new THREE.Vector3(10, 0, -115),
+            new THREE.Vector3(-14, 0, -128),
+            new THREE.Vector3(4, 0, -142),   // near shrine road
+            new THREE.Vector3(-8, 0, -25),
+            new THREE.Vector3(6, 0, -52),
         ];
 
         this.activeSpawnIndex = -1;
@@ -228,17 +230,17 @@ class YakshiEntity {
         this.mesh.position.copy(this.position);
         this.mesh.visible = true;
 
-        if (spawnType < 0.35) {
+        if (spawnType < 0.48) {
             // JUMP SCARE — spawn very close, briefly visible, then retreat
             this._doJumpScare(playerPos, zone);
-        } else if (spawnType < 0.65) {
+        } else if (spawnType < 0.78) {
             // Silent stalk — appear in darkness, start hunting
             this.state = 'Stalking';
-            this._fadeIn(2.5);
+            this._fadeIn(1.9);
         } else {
             // T-pose silhouette in darkness (like seen between trees)
             this.state = 'Stalking';
-            this._fadeIn(3.0);
+            this._fadeIn(1.6);
             // Create distant view behind tree
             if (window.KeralaWorld) {
                 window.KeralaWorld.triggerFlashlightFlicker(0.8);
@@ -395,15 +397,18 @@ class YakshiEntity {
             this.mesh.position.y = 0.08 * Math.sin(this._bobTimer * 1.6);
 
             // Random glitch — very brief teleport / distortion
-            if (this._glitchTimer > 8.0 + Math.random() * 12 && this.state === 'Stalking') {
+            if (this._glitchTimer > 4.0 + Math.random() * 8 && (this.state === 'Stalking' || this.state === 'Luring')) {
                 this._glitchTimer = 0;
                 const glitchOffset = new THREE.Vector3(
-                    (Math.random() - 0.5) * 3,
+                    (Math.random() - 0.5) * 4.5,
                     0,
-                    (Math.random() - 0.5) * 3
+                    (Math.random() - 0.5) * 4.5
                 );
                 this.position.add(glitchOffset);
-                if (window.KeralaWorld) window.KeralaWorld.triggerFlashlightFlicker(0.4);
+                if (window.KeralaWorld) window.KeralaWorld.triggerFlashlightFlicker(0.6);
+                if (Math.random() < 0.3 && window.HorrorAudio) {
+                    window.HorrorAudio.playYakshiWhisper("Koodi vaa...", this.position.x, this.position.z);
+                }
             }
         }
 
