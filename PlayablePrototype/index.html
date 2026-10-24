@@ -3,74 +3,682 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AYAS: THE LAST WARD - 3D First-Person Survival Horror Game</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>AYAS: THE LAST WARD — Kerala Folklore Survival Horror</title>
+    <meta name="description" content="3D first-person survival horror game set in rural Kerala. Investigate paranormal activity, restore iron wards, and survive the Yakshi.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --cyan: #00f0ff;
+            --gold: #d4a034;
+            --red: #ff2233;
+            --green: #00e576;
+            --dark: #030609;
+            --navy: #060d18;
+            --panel: rgba(4,12,24,0.88);
+            --mono: 'Share Tech Mono', monospace;
+            --title: 'Bebas Neue', cursive;
+            --ui: 'Rajdhani', sans-serif;
+        }
+
+        html, body {
+            width: 100%; height: 100%;
+            background: #000;
+            overflow: hidden;
+            font-family: var(--ui);
+            cursor: none;
+            user-select: none;
+        }
+
+        #canvas-container {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+        }
+        #canvas-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* ─── VIGNETTE & OVERLAYS ─── */
+        #vignette {
+            position: fixed; inset: 0; z-index: 5; pointer-events: none;
+            background: radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(0,0,0,0.72) 100%);
+        }
+        #screen-overlay {
+            position: fixed; inset: 0; z-index: 6; pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+        #cold-vignette {
+            position: fixed; inset: 0; z-index: 7; pointer-events: none;
+            border: 0px solid rgba(0,220,255,0.0);
+            box-shadow: inset 0 0 0px 0px rgba(0,220,255,0.0);
+            transition: box-shadow 1.5s ease, border 1.5s ease;
+        }
+        #blood-vignette {
+            position: fixed; inset: 0; z-index: 7; pointer-events: none;
+            border: 0px solid rgba(255,20,20,0.0);
+            box-shadow: inset 0 0 0px 0px rgba(255,20,20,0.0);
+            transition: box-shadow 0.3s ease, border 0.3s ease;
+        }
+
+        /* ─── HUD LAYER ─── */
+        #hud-layer {
+            position: fixed; inset: 0; z-index: 10; pointer-events: none;
+        }
+
+        /* ─── OBJECTIVE CARD (top-left) ─── */
+        #objective-card {
+            position: absolute;
+            top: 14px; left: 14px;
+            width: 310px;
+            background: var(--panel);
+            border: 1px solid rgba(0,240,255,0.18);
+            border-left: 2px solid var(--cyan);
+            padding: 10px 12px;
+            backdrop-filter: blur(6px);
+        }
+        #objective-card::before {
+            content: 'MISSION';
+            display: block;
+            font-family: var(--mono);
+            font-size: 9px;
+            color: var(--cyan);
+            letter-spacing: 3px;
+            margin-bottom: 5px;
+            opacity: 0.7;
+        }
+        #objective-title {
+            font-family: var(--ui);
+            font-size: 13px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 0.5px;
+            line-height: 1.3;
+        }
+        #objective-desc {
+            font-size: 11px;
+            color: rgba(200,210,220,0.82);
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+        #objective-hint {
+            font-family: var(--mono);
+            font-size: 9.5px;
+            color: rgba(0,240,255,0.65);
+            margin-top: 6px;
+            line-height: 1.4;
+            border-top: 1px solid rgba(0,240,255,0.1);
+            padding-top: 5px;
+        }
+
+        /* ─── WARD STATUS (top-center) ─── */
+        #ward-status-container {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: var(--panel);
+            border: 1px solid rgba(0,240,255,0.15);
+            padding: 7px 14px;
+            backdrop-filter: blur(6px);
+        }
+        #ward-status-container::before {
+            content: 'IRON PERIMETER';
+            font-family: var(--mono);
+            font-size: 8px;
+            color: rgba(0,240,255,0.5);
+            letter-spacing: 2px;
+            margin-right: 6px;
+        }
+        .ward-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .ward-name {
+            font-family: var(--mono);
+            font-size: 9px;
+            color: rgba(180,190,200,0.7);
+            letter-spacing: 1px;
+        }
+        .ward-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            border: 1.5px solid;
+        }
+        .ward-dot.damaged {
+            background: rgba(255,34,51,0.3);
+            border-color: #ff2233;
+            box-shadow: 0 0 6px rgba(255,34,51,0.6);
+            animation: ward-pulse-red 1.8s ease-in-out infinite;
+        }
+        .ward-dot.repaired {
+            background: rgba(0,240,255,0.3);
+            border-color: var(--cyan);
+            box-shadow: 0 0 8px rgba(0,240,255,0.7);
+        }
+        @keyframes ward-pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* ─── MINIMAP (top-right) ─── */
+        #minimap-container {
+            position: absolute;
+            top: 14px; right: 14px;
+            width: 160px; height: 160px;
+            background: rgba(2,6,14,0.9);
+            border: 1px solid rgba(0,240,255,0.25);
+            border-radius: 2px;
+            overflow: hidden;
+            backdrop-filter: blur(4px);
+        }
+        #minimap-container::before {
+            content: 'MAP';
+            position: absolute;
+            top: 5px; left: 8px;
+            font-family: var(--mono);
+            font-size: 8px;
+            color: rgba(0,240,255,0.5);
+            letter-spacing: 2px;
+            z-index: 2;
+        }
+        #minimap-canvas {
+            width: 160px; height: 160px;
+            display: block;
+        }
+
+        /* ─── CROSSHAIR ─── */
+        #reticle-container {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        #reticle {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: transparent;
+            border: 1.5px solid rgba(255,255,255,0.55);
+            transition: all 0.15s ease;
+        }
+        #reticle.active {
+            background: rgba(0,240,255,0.4);
+            border-color: var(--cyan);
+            box-shadow: 0 0 8px rgba(0,240,255,0.6);
+            transform: scale(1.4);
+        }
+        #interaction-prompt {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--cyan);
+            background: rgba(0,8,18,0.75);
+            padding: 3px 10px;
+            letter-spacing: 1px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            white-space: nowrap;
+        }
+        #interaction-prompt.visible { opacity: 1; }
+
+        /* ─── HOLD PROGRESS BAR ─── */
+        #hold-progress-bar {
+            position: absolute;
+            bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 180px; height: 4px;
+            background: rgba(0,240,255,0.15);
+            display: none;
+        }
+        #hold-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--cyan), #88ffff);
+            width: 0%;
+            transition: width 0.05s linear;
+            box-shadow: 0 0 8px var(--cyan);
+        }
+
+        /* ─── BOTTOM STATUS BAR ─── */
+        #bottom-bar {
+            position: absolute;
+            bottom: 14px; left: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .status-label {
+            font-family: var(--mono);
+            font-size: 9px;
+            color: rgba(0,240,255,0.55);
+            letter-spacing: 1.5px;
+            width: 72px;
+        }
+        .status-bar-bg {
+            width: 110px; height: 5px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(0,240,255,0.12);
+        }
+        .status-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--green), #44ffaa);
+            transition: width 0.3s ease;
+            box-shadow: 0 0 5px rgba(0,229,118,0.5);
+        }
+        .status-bar-fill.exhausted {
+            background: linear-gradient(90deg, var(--red), #ff7722);
+            box-shadow: 0 0 5px rgba(255,34,51,0.5);
+            animation: exhausted-pulse 0.6s ease-in-out infinite;
+        }
+        @keyframes exhausted-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        #ash-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ash-pouch {
+            width: 12px; height: 16px;
+            border: 1.5px solid rgba(180,150,50,0.5);
+            background: rgba(140,110,30,0.2);
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+        .ash-pouch.available {
+            background: rgba(200,160,50,0.35);
+            border-color: var(--gold);
+            box-shadow: 0 0 5px rgba(212,160,52,0.4);
+        }
+
+        /* ─── CONTROLS HINT (bottom-right) ─── */
+        #controls-hint {
+            position: absolute;
+            bottom: 14px; right: 14px;
+            font-family: var(--mono);
+            font-size: 9px;
+            color: rgba(100,120,140,0.6);
+            text-align: right;
+            line-height: 1.8;
+            background: var(--panel);
+            padding: 8px 12px;
+            border: 1px solid rgba(255,255,255,0.04);
+            max-width: 340px;
+        }
+
+        /* ─── AYAS DEVICE PANEL (bottom-right, above controls) ─── */
+        #ayas-device-panel {
+            position: absolute;
+            bottom: 112px; right: 14px;
+            width: 220px;
+            background: rgba(2,8,16,0.93);
+            border: 1px solid rgba(0,240,255,0.22);
+            border-top: 2px solid var(--cyan);
+            font-family: var(--mono);
+            font-size: 10px;
+            display: none;
+            backdrop-filter: blur(8px);
+        }
+        #ayas-device-panel.active { display: block; }
+        .ayas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            background: rgba(0,240,255,0.06);
+            border-bottom: 1px solid rgba(0,240,255,0.15);
+        }
+        .ayas-title { color: var(--cyan); font-size: 9px; letter-spacing: 2px; }
+        .ayas-mode { color: var(--green); font-size: 8px; animation: blink 1.8s step-end infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+        .crt-screen { padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; }
+        .screen-metric { display: flex; justify-content: space-between; align-items: center; }
+        .metric-label { color: rgba(0,240,255,0.55); font-size: 9px; }
+        .metric-val { color: #fff; font-size: 9px; font-weight: bold; }
+        .metric-val.danger { color: var(--red); animation: blink 0.5s step-end infinite; }
+        .metric-val.warning { color: var(--gold); }
+        .meter-track {
+            height: 4px;
+            background: rgba(0,240,255,0.08);
+            border: 1px solid rgba(0,240,255,0.12);
+        }
+        .meter-needle {
+            height: 100%;
+            background: linear-gradient(90deg, rgba(0,240,255,0.2), var(--cyan));
+            transition: width 0.4s ease;
+            box-shadow: 0 0 6px var(--cyan);
+        }
+        #waveform-canvas { width: 200px; height: 36px; display: block; margin: 2px 0; }
+        .ward-compass-row {
+            display: flex;
+            justify-content: space-between;
+            padding-top: 3px;
+            border-top: 1px solid rgba(0,240,255,0.1);
+        }
+        .ayas-footer {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 10px;
+            background: rgba(0,240,255,0.04);
+            border-top: 1px solid rgba(0,240,255,0.1);
+            font-size: 8px;
+            color: rgba(0,240,255,0.4);
+        }
+
+        /* ─── START SCREEN ─── */
+        #start-screen {
+            position: fixed; inset: 0; z-index: 100;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .start-bg-overlay {
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse at 50% 60%, rgba(0,8,20,0) 0%, rgba(0,2,6,0.98) 70%);
+        }
+        .game-title {
+            font-family: var(--title);
+            font-size: clamp(72px, 12vw, 130px);
+            color: var(--cyan);
+            letter-spacing: 12px;
+            text-shadow: 0 0 60px rgba(0,240,255,0.35), 0 0 120px rgba(0,240,255,0.12);
+            position: relative; z-index: 1;
+            animation: title-pulse 4s ease-in-out infinite;
+        }
+        @keyframes title-pulse {
+            0%, 100% { text-shadow: 0 0 60px rgba(0,240,255,0.35), 0 0 120px rgba(0,240,255,0.12); }
+            50% { text-shadow: 0 0 80px rgba(0,240,255,0.55), 0 0 160px rgba(0,240,255,0.2); }
+        }
+        .game-subtitle {
+            font-family: var(--ui);
+            font-size: 15px;
+            font-weight: 400;
+            letter-spacing: 5px;
+            color: var(--gold);
+            margin-top: 4px;
+            position: relative; z-index: 1;
+        }
+        .start-divider {
+            width: 280px; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+            margin: 24px auto;
+            position: relative; z-index: 1;
+        }
+        .intro-lore {
+            font-family: var(--ui);
+            font-size: 14px;
+            color: rgba(180,190,200,0.8);
+            text-align: center;
+            max-width: 560px;
+            line-height: 1.7;
+            position: relative; z-index: 1;
+        }
+        .intro-lore strong { color: var(--cyan); }
+        .click-prompt {
+            position: relative; z-index: 1;
+            margin-top: 36px;
+            font-family: var(--mono);
+            font-size: 12px;
+            letter-spacing: 3px;
+            color: rgba(0,240,255,0.7);
+            animation: click-flash 1.6s ease-in-out infinite;
+        }
+        @keyframes click-flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+        .start-warning {
+            position: relative; z-index: 1;
+            margin-top: 18px;
+            font-family: var(--mono);
+            font-size: 9px;
+            color: rgba(255,100,100,0.5);
+            letter-spacing: 2px;
+        }
+
+        /* ─── MODAL SCREENS ─── */
+        .modal-screen {
+            position: fixed; inset: 0; z-index: 90;
+            background: rgba(0,2,6,0.92);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(6px);
+        }
+        .modal-screen.active { display: flex; }
+        .modal-content {
+            background: rgba(4,12,24,0.97);
+            border: 1px solid rgba(0,240,255,0.2);
+            border-top: 2px solid var(--cyan);
+            padding: 32px 36px;
+            min-width: 440px;
+            max-width: 560px;
+        }
+        .modal-title {
+            font-family: var(--title);
+            font-size: 32px;
+            color: var(--cyan);
+            letter-spacing: 4px;
+            margin-bottom: 4px;
+        }
+        .modal-title.danger { color: var(--red); }
+        .modal-title.victory { color: var(--gold); }
+        .modal-subtitle {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: rgba(0,240,255,0.5);
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(0,240,255,0.12);
+        }
+        .modal-body { color: rgba(180,192,210,0.9); font-size: 13px; line-height: 1.65; }
+        .modal-body p { margin-bottom: 10px; }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 13px;
+        }
+        .setting-row span:first-child { color: rgba(200,210,220,0.8); }
+        .setting-slider {
+            width: 120px;
+            accent-color: var(--cyan);
+            cursor: pointer;
+        }
+        .btn-group { display: flex; gap: 10px; margin-top: 24px; }
+        .primary-btn {
+            flex: 1;
+            padding: 12px;
+            background: rgba(0,240,255,0.1);
+            border: 1px solid var(--cyan);
+            color: var(--cyan);
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .primary-btn:hover { background: rgba(0,240,255,0.2); box-shadow: 0 0 12px rgba(0,240,255,0.2); }
+        .secondary-btn {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255,34,51,0.08);
+            border: 1px solid rgba(255,34,51,0.4);
+            color: var(--red);
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .secondary-btn:hover { background: rgba(255,34,51,0.18); }
+
+        /* ─── JOURNAL ENTRIES ─── */
+        .journal-entry {
+            background: rgba(0,240,255,0.04);
+            border-left: 2px solid rgba(0,240,255,0.3);
+            padding: 10px 14px;
+            margin-bottom: 10px;
+        }
+        .journal-entry-title { color: var(--cyan); font-size: 11px; font-family: var(--mono); letter-spacing: 1px; margin-bottom: 5px; }
+        .journal-entry-text { color: rgba(180,192,210,0.85); font-size: 12px; line-height: 1.5; font-style: italic; }
+
+        /* ─── SUBTITLES / HORROR TEXT ─── */
+        #horror-subtitle {
+            position: fixed;
+            bottom: 85px;
+            left: 50%; transform: translateX(-50%);
+            z-index: 15;
+            font-family: var(--mono);
+            font-size: 13px;
+            color: rgba(200,220,255,0.85);
+            background: rgba(0,2,8,0.65);
+            padding: 5px 16px;
+            border: 1px solid rgba(255,255,255,0.06);
+            opacity: 0;
+            transition: opacity 0.35s;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        #horror-subtitle.visible { opacity: 1; }
+
+        /* ─── NOTIFICATION TOAST ─── */
+        #notification-toast {
+            position: fixed;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 20;
+            font-family: var(--ui);
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--cyan);
+            background: rgba(2,8,18,0.92);
+            border: 1px solid rgba(0,240,255,0.35);
+            padding: 12px 28px;
+            letter-spacing: 3px;
+            opacity: 0;
+            transition: opacity 0.4s;
+            pointer-events: none;
+        }
+        #notification-toast.visible { opacity: 1; }
+
+        /* ─── BREATHING EFFECT (danger proximity) ─── */
+        #breath-overlay {
+            position: fixed; inset: 0; z-index: 8;
+            pointer-events: none;
+            border: 0px solid transparent;
+            box-shadow: inset 0 0 0 0 transparent;
+        }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 768px) {
+            #minimap-container { width: 110px; height: 110px; }
+            #minimap-canvas { width: 110px; height: 110px; }
+            #objective-card { width: 220px; }
+            .game-title { font-size: 56px; }
+        }
+    </style>
 </head>
 <body>
-    <!-- 3D WebGL Canvas Container -->
+    <!-- 3D WebGL Canvas -->
     <div id="canvas-container"></div>
 
-    <!-- Atmospheric Fog / Cold / Blood Vignette -->
+    <!-- Visual Overlays -->
+    <div id="vignette"></div>
     <div id="screen-overlay"></div>
+    <div id="cold-vignette"></div>
+    <div id="blood-vignette"></div>
+    <div id="breath-overlay"></div>
 
-    <!-- Gameplay HUD Layer -->
+    <!-- HUD Layer -->
     <div id="hud-layer">
-        <!-- Top Bar: Objective Tracker & Ward Integrity Status -->
-        <div id="top-bar">
-            <div id="objective-card">
-                <div id="objective-title">Objective 1: Enter the Village</div>
-                <div id="objective-desc">Reach the abandoned ancestral house along the Pala Road. Familiarize yourself with movement and controls.</div>
-                <div id="objective-hint">Use [W,A,S,D] to move, [Shift] to sprint, [F] for flashlight, [Q] for AYAS device.</div>
-            </div>
 
-            <div id="ward-status-container">
-                <div class="ward-indicator">
-                    <span class="ward-name">WARD A</span>
-                    <div id="ward-dot-a" class="ward-dot"></div>
-                </div>
-                <div class="ward-indicator">
-                    <span class="ward-name">WARD B</span>
-                    <div id="ward-dot-b" class="ward-dot damaged"></div>
-                </div>
-                <div class="ward-indicator">
-                    <span class="ward-name">WARD C</span>
-                    <div id="ward-dot-c" class="ward-dot damaged"></div>
-                </div>
+        <!-- Objective Card (top-left) -->
+        <div id="objective-card">
+            <div id="objective-title">Objective 1: Enter the Village</div>
+            <div id="objective-desc">Reach the abandoned ancestral house along the Pala Road.</div>
+            <div id="objective-hint">Use [W,A,S,D] to move • [F] flashlight • [Q] AYAS • [E] interact</div>
+        </div>
+
+        <!-- Ward Status (top-center) -->
+        <div id="ward-status-container">
+            <div class="ward-indicator">
+                <span class="ward-name">A</span>
+                <div id="ward-dot-a" class="ward-dot damaged"></div>
+            </div>
+            <div class="ward-indicator">
+                <span class="ward-name">B</span>
+                <div id="ward-dot-b" class="ward-dot damaged"></div>
+            </div>
+            <div class="ward-indicator">
+                <span class="ward-name">C</span>
+                <div id="ward-dot-c" class="ward-dot damaged"></div>
             </div>
         </div>
 
-        <!-- Center Crosshair Reticle & Contextual Interaction Prompt -->
+        <!-- Minimap (top-right) -->
+        <div id="minimap-container">
+            <canvas id="minimap-canvas" width="160" height="160"></canvas>
+        </div>
+
+        <!-- Crosshair & Interaction -->
         <div id="reticle-container">
             <div id="reticle"></div>
             <div id="interaction-prompt">Press [E] to Inspect</div>
         </div>
 
-        <!-- Bottom Bar: Player Status & Handheld Controls Legend -->
+        <!-- Hold Progress Bar -->
+        <div id="hold-progress-bar">
+            <div id="hold-progress-fill"></div>
+        </div>
+
+        <!-- Bottom-left: Player Status -->
         <div id="bottom-bar">
-            <div id="player-status">
-                <div class="status-row">
-                    <span class="status-label">STAMINA</span>
-                    <div class="status-bar-bg">
-                        <div id="stamina-fill" class="status-bar-fill"></div>
-                    </div>
-                </div>
-                <div class="status-row">
-                    <span class="status-label">SACRED ASH</span>
-                    <span id="ash-count-val" style="color: #00f0ff; font-weight: 700;">2 POUCHES</span>
+            <div class="status-row">
+                <span class="status-label">STAMINA</span>
+                <div class="status-bar-bg">
+                    <div id="stamina-fill" class="status-bar-fill" style="width:100%"></div>
                 </div>
             </div>
-
-            <div id="controls-hint">
-                [WASD] Move &bull; [Shift] Sprint &bull; [Ctrl] Crouch &bull; [E] Interact &bull; [F] Flashlight &bull; [Q] AYAS &bull; [R] Calibrate &bull; [G] Sacred Ash &bull; [Tab] Journal
+            <div id="ash-row">
+                <span class="status-label">SACRED ASH</span>
+                <div id="ash-pouch-1" class="ash-pouch available"></div>
+                <div id="ash-pouch-2" class="ash-pouch available"></div>
             </div>
         </div>
-    </div>
 
-    <!-- Handheld AYAS Detector Physical Interface (Bottom Right Screen) -->
+        <!-- Bottom-right: Controls -->
+        <div id="controls-hint">
+            [WASD] Move &bull; [Shift] Sprint &bull; [Ctrl] Crouch<br>
+            [F] Flashlight &bull; [Q] AYAS &bull; [E] Interact<br>
+            [G] Sacred Ash &bull; [Tab] Journal &bull; [Esc] Pause
+        </div>
+
+    </div><!-- /hud-layer -->
+
+    <!-- AYAS Device Panel -->
     <div id="ayas-device-panel">
         <div class="ayas-header">
-            <span class="ayas-title">AYAS MK-IV MONITOR</span>
-            <span class="ayas-mode">ACTIVE SCAN</span>
+            <span class="ayas-title">AYAS MK-IV</span>
+            <span class="ayas-mode">● ACTIVE</span>
         </div>
         <div class="crt-screen">
             <div class="screen-metric">
@@ -78,81 +686,100 @@
                 <span id="meter-em-val" class="metric-val">42.5 µT</span>
             </div>
             <div class="meter-track">
-                <div id="needle-fill" class="meter-needle"></div>
+                <div id="needle-fill" class="meter-needle" style="width:28%"></div>
             </div>
-
             <div class="screen-metric">
-                <span class="metric-label">COLD-SPOT TEMP:</span>
+                <span class="metric-label">COLD-SPOT:</span>
                 <span id="meter-temp-val" class="metric-val">28.5 °C</span>
             </div>
-
             <div class="screen-metric">
-                <span class="metric-label">VOICE SPECTRUM:</span>
+                <span class="metric-label">VOICE SPEC:</span>
                 <span id="meter-voice-val" class="metric-val">AUTHENTIC</span>
             </div>
-            <canvas id="waveform-canvas"></canvas>
-
+            <canvas id="waveform-canvas" width="200" height="36"></canvas>
             <div class="ward-compass-row">
-                <span>WARD NAV:</span>
-                <span id="meter-ward-nav" style="color: #ffbb11; font-weight: bold;">WARD A | 24m ↑</span>
+                <span style="color:rgba(0,240,255,0.5); font-size:9px">WARD NAV:</span>
+                <span id="meter-ward-nav" style="color:var(--gold); font-weight:bold; font-size:9px">WARD A | 24m ↑</span>
             </div>
         </div>
         <div class="ayas-footer">
             <span>SENSORS: ONLINE</span>
-            <span>HOLD [R] TO CALIBRATE</span>
+            <span>HOLD [R] CALIBRATE</span>
         </div>
     </div>
 
-    <!-- Start / Title Screen Overlay -->
+    <!-- Horror Subtitle -->
+    <div id="horror-subtitle"></div>
+
+    <!-- Notification Toast -->
+    <div id="notification-toast"></div>
+
+    <!-- START SCREEN -->
     <div id="start-screen">
-        <h1 class="game-title">AYAS: THE LAST WARD</h1>
-        <h2 class="game-subtitle">A 3D First-Person Kerala Folklore Survival Horror Game</h2>
+        <div class="start-bg-overlay"></div>
+        <h1 class="game-title">AYAS</h1>
+        <h2 class="game-subtitle">THE LAST WARD</h2>
+        <div class="start-divider"></div>
         <p class="intro-lore">
             Southern Kerala, 1994. A stormy monsoon night on the abandoned Pala Road.<br>
-            Equipped with the prototype <strong>AYAS</strong> (Anomaly & Iron Integrity Monitor), investigate strange disappearances, repair conductive iron boundaries, and avoid the Yakshi stalking between the ancient trees before dawn.
+            You carry the prototype <strong>AYAS Anomaly Detector</strong>. The villagers have been disappearing.<br>
+            There are voices in the rain. There is a woman near the ancient tree.<br>
+            <em style="color: rgba(255,100,100,0.7); font-size:13px;">She is real. She is watching. She is already here.</em>
         </p>
-        <div class="click-prompt">CLICK ANYWHERE TO ENTER THE PALA ROAD</div>
+        <div class="start-divider"></div>
+        <div class="click-prompt">CLICK TO ENTER THE PALA ROAD</div>
+        <div class="start-warning">⚠ HEADPHONES STRONGLY RECOMMENDED — CONTAINS HORROR AUDIO</div>
     </div>
 
-    <!-- Pause Menu Modal -->
+    <!-- Pause Menu -->
     <div id="pause-modal" class="modal-screen">
         <div class="modal-content">
             <div class="modal-title">MISSION PAUSED</div>
-            <div class="modal-subtitle">Field Research Operations Halted</div>
+            <div class="modal-subtitle">FIELD OPERATIONS HALTED</div>
             <div class="modal-body">
                 <div class="setting-row">
-                    <span>Master Audio Volume</span>
+                    <span>Master Volume</span>
                     <input id="slider-master" class="setting-slider" type="range" min="0" max="1" step="0.05" value="1.0">
                 </div>
                 <div class="setting-row">
-                    <span>Mouse Look Sensitivity</span>
+                    <span>Mouse Sensitivity</span>
                     <input id="slider-sens" class="setting-slider" type="range" min="0.5" max="3" step="0.1" value="1.0">
                 </div>
                 <div class="setting-row">
-                    <span>Subtitles & Nonverbal Cues</span>
-                    <span style="color: #00f0ff;">ENABLED</span>
+                    <span>Subtitles</span>
+                    <span style="color:var(--cyan); font-size:12px; font-family:var(--mono)">ENABLED</span>
                 </div>
                 <div class="setting-row">
                     <span>Horror Intensity</span>
-                    <span style="color: #00f0ff;">STANDARD (AUTHENTIC FOLKLORE)</span>
+                    <span style="color:var(--cyan); font-size:12px; font-family:var(--mono)">AUTHENTIC FOLKLORE</span>
                 </div>
             </div>
             <div class="btn-group">
                 <button id="btn-resume" class="primary-btn">RESUME MISSION</button>
-                <button id="btn-restart" class="secondary-btn">RESTART LEVEL</button>
+                <button id="btn-restart" class="secondary-btn">RESTART</button>
             </div>
         </div>
     </div>
 
-    <!-- Journal / Evidence Modal -->
+    <!-- Journal Modal -->
     <div id="journal-modal" class="modal-screen">
-        <div class="modal-content">
-            <div class="modal-title">RESEARCH JOURNAL & EVIDENCE</div>
-            <div class="modal-subtitle">Recovered Documents from the Ancestral House</div>
-            <div class="modal-body" style="font-size: 13px; line-height: 1.6; color: #8b9bb4;">
-                <p><strong style="color: #00f0ff;">Field Note 1:</strong> The villagers were right about iron. The conductive perimeter cables disrupt the entity's electromagnetic coherence, repelling her from cross-boundary breaches.</p>
-                <p><strong style="color: #00f0ff;">Field Note 2:</strong> The ancient Pala tree (Alstonia scholaris) acts as a focal antenna. Temperature drops precipitously within 15 meters of her presence.</p>
-                <p><strong style="color: #00f0ff;">Field Note 3:</strong> Sacred Ash (Bhasmam) creates a localized high-frequency boundary. In desperate situations, scattering it will force her to retreat.</p>
+        <div class="modal-content" style="max-width:600px">
+            <div class="modal-title">RESEARCH JOURNAL</div>
+            <div class="modal-subtitle">RECOVERED DOCUMENTS — PALA ROAD INVESTIGATION</div>
+            <div class="modal-body" id="journal-entries-container">
+                <div class="journal-entry">
+                    <div class="journal-entry-title">[ FIELD NOTE 1 ]</div>
+                    <div class="journal-entry-text">The villagers were right about iron. The conductive perimeter cables disrupt the entity's electromagnetic coherence, repelling her from cross-boundary breaches.</div>
+                </div>
+                <div class="journal-entry">
+                    <div class="journal-entry-title">[ FIELD NOTE 2 ]</div>
+                    <div class="journal-entry-text">The ancient Pala tree (Alstonia scholaris) acts as a focal antenna. Temperature drops precipitously within 15 meters of her presence. The AYAS cold-spot sensor is most reliable near the tree.</div>
+                </div>
+                <div class="journal-entry">
+                    <div class="journal-entry-title">[ FIELD NOTE 3 ]</div>
+                    <div class="journal-entry-text">Sacred Ash (Bhasmam) creates a localized high-frequency boundary. In desperate situations, scattering it will force her to retreat momentarily. Use wisely — only 2 pouches remain.</div>
+                </div>
+                <div id="dynamic-journal-entries"></div>
             </div>
             <div class="btn-group">
                 <button id="btn-close-journal" class="primary-btn">CLOSE JOURNAL [TAB]</button>
@@ -160,13 +787,15 @@
         </div>
     </div>
 
-    <!-- Death / Failure Screen -->
+    <!-- Death Screen -->
     <div id="death-screen" class="modal-screen">
         <div class="modal-content">
-            <div class="modal-title">SIGNAL TERMINATED</div>
+            <div class="modal-title danger">SIGNAL TERMINATED</div>
             <div id="death-reason" class="modal-subtitle">The Yakshi claimed your life on the Pala Road.</div>
-            <div class="modal-body" style="text-align: center; color: #8b9bb4; font-size: 14px;">
-                Remember: Crouch [Ctrl] to muffle your footsteps and reduce visual detection. When pursued, deploy Sacred Ash [G] or retreat behind an active Iron Ward boundary.
+            <div class="modal-body" style="text-align:center">
+                <p>Remember: <strong style="color:var(--cyan)">Crouch [Ctrl]</strong> to muffle footsteps and reduce detection range.</p>
+                <p>Deploy <strong style="color:var(--gold)">Sacred Ash [G]</strong> or hide inside the rice bin to survive.</p>
+                <p style="margin-top:12px; color:rgba(150,160,170,0.6); font-size:11px">The village still needs you. The iron wards must hold.</p>
             </div>
             <div class="btn-group">
                 <button id="btn-retry-death" class="primary-btn">RETRY FROM CHECKPOINT</button>
@@ -177,11 +806,12 @@
     <!-- Victory Screen -->
     <div id="victory-screen" class="modal-screen">
         <div class="modal-content">
-            <div class="modal-title">ESCAPE ACCOMPLISHED</div>
-            <div class="modal-subtitle">You reached the Sacred Shrine before dawn broke.</div>
-            <div class="modal-body" style="font-size: 14px; line-height: 1.6; color: #c9d1d9;">
-                <p>The consecrated stone lamps of the shrine protected you from the Yakshi's pursuit. With the iron ward perimeters restored and the disappearance files recovered, the mystery of the Pala Road is documented for the first time.</p>
-                <p style="margin-top: 12px; color: #00f0ff;"><strong>MISSION SUMMARY:</strong> All 3 Wards Restored &bull; Evidence Recovered &bull; Prototype AYAS Operational.</p>
+            <div class="modal-title victory">SANCTUARY REACHED</div>
+            <div class="modal-subtitle">YOU SURVIVED THE NIGHT ON PALA ROAD</div>
+            <div class="modal-body">
+                <p>The consecrated stone lamps of the Kavu shrine protected you from the Yakshi's pursuit. With the iron ward perimeter fully restored and the disappearance files recovered, the mystery of the Pala Road is documented.</p>
+                <p style="margin-top:12px; color:var(--cyan)"><strong>MISSION COMPLETE:</strong> All 3 Iron Wards Restored • Evidence Recovered • AYAS Prototype Validated.</p>
+                <p style="margin-top:8px; color:rgba(150,160,170,0.6); font-size:11px">"The entity has retreated. The village is safe... for now."</p>
             </div>
             <div class="btn-group">
                 <button id="btn-win-restart" class="primary-btn">PLAY AGAIN</button>
@@ -189,13 +819,31 @@
         </div>
     </div>
 
-    <!-- Scripts (Offline Three.js, Audio Engine, 3D World, AYAS Device, Yakshi AI, Quests & Main Loop) -->
+    <!-- Evidence Inspect Modal -->
+    <div id="evidence-modal" class="modal-screen">
+        <div class="modal-content">
+            <div class="modal-title">EVIDENCE COLLECTED</div>
+            <div id="evidence-modal-title" class="modal-subtitle"></div>
+            <div class="modal-body">
+                <div class="journal-entry">
+                    <div id="evidence-modal-text" class="journal-entry-text"></div>
+                </div>
+                <p style="margin-top:12px; color:rgba(0,240,255,0.5); font-size:11px; font-family:var(--mono)">Logged to Research Journal [TAB]</p>
+            </div>
+            <div class="btn-group">
+                <button id="btn-close-evidence" class="primary-btn">CONFIRM [E]</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
     <script src="js/engine/three.min.js"></script>
     <script src="js/audio/soundEngine.js"></script>
     <script src="js/engine/world.js"></script>
     <script src="js/items/ayasDetector.js"></script>
     <script src="js/ai/yakshiAI.js"></script>
     <script src="js/systems/questManager.js"></script>
+    <script src="js/ui/minimap.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>
