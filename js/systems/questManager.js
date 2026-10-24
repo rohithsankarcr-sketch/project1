@@ -1,6 +1,16 @@
 /**
- * AYAS: THE LAST WARD - Mission & Objective Progression Manager
- * Coordinates Objectives 1 through 8, Evidence Tracking, Checkpoints & Dawn Escape
+ * AYAS: THE LAST WARD - Mission & Objective Progression Manager v3.0
+ * 8 sequential investigation objectives, evidence tracking, and fail-safe ward transitions.
+ * 
+ * Objectives:
+ * 1. Enter the Village (reach ancestral house)
+ * 2. Calibrate AYAS Detector (hold [R] while stationary)
+ * 3. Investigate the Pala Tree (detect cold-spot & static anomaly)
+ * 4. Restore Ward A — Village Path (splice circuit)
+ * 5. Restore Ward B — Pala Tree (repair ward in danger zone)
+ * 6. Recover Disappearance Files (collect 3 files in the house)
+ * 7. Restore Ward C — Ancestral House (fail-safe repair transition)
+ * 8. ESCAPE TO THE KAVU SHRINE (final chase before dawn)
  */
 
 class QuestManager {
@@ -12,51 +22,51 @@ class QuestManager {
         this.objectives = [
             {
                 id: 1,
-                title: "Objective 1: Enter the Village",
-                desc: "Reach the abandoned ancestral house along the Pala Road. Familiarize yourself with movement and controls.",
-                hint: "Use [W,A,S,D] to move, [Shift] to sprint, [F] for flashlight, [Q] for AYAS device."
+                title: "① Enter the Village",
+                desc: "Reach the abandoned ancestral house along the Pala Road. Familiarize yourself with movement.",
+                hint: "[WASD] Move • [Shift] Sprint • [Ctrl] Crouch • [F] Flashlight • [Q] AYAS Device • [T] Walkman"
             },
             {
                 id: 2,
-                title: "Objective 2: Calibrate Ayas Detector",
-                desc: "Find a stable baseline zone away from high iron concentrations. Stand still and calibrate your AYAS monitor.",
-                hint: "Ensure you are stationary. Press and hold [R] to establish baseline geomagnetic calibration."
+                title: "② Calibrate AYAS Detector",
+                desc: "Find a stable baseline zone away from iron. Stand perfectly still and calibrate the AYAS monitor.",
+                hint: "Stand still and hold [R] to calibrate • Watch the EM needle stabilize • Takes ~2.2 seconds"
             },
             {
                 id: 3,
-                title: "Objective 3: Investigate the Pala Tree",
-                desc: "Follow environmental clues toward the ancient Pala tree. Approach with caution and observe anomalies.",
-                hint: "Watch the AYAS EM needle. If you hear sweet calls or anklets, check the voice authenticity meter."
+                title: "③ Investigate the Pala Tree",
+                desc: "Follow environmental cues toward the ancient Pala tree (north-west). Approach with caution.",
+                hint: "⚠ Jess's presence is active near the tree • Watch AYAS cold-spot meter • Don't follow the voice lures"
             },
             {
                 id: 4,
-                title: "Objective 4: Restore Ward A (Village Path)",
-                desc: "The entrance perimeter ward has severed continuity. Locate the terminal post and splice the conductive iron line.",
-                hint: "Approach Ward Post A. Look for the sparking terminal box and hold [E] to splice the circuit."
+                title: "④ Restore Ward A — Village Path",
+                desc: "The entrance perimeter ward has severed continuity. Find and splice the iron circuit terminal.",
+                hint: "Walk north on main road • Approach the iron post • Hold [E] 2.5 sec to splice circuit"
             },
             {
                 id: 5,
-                title: "Objective 5: Survive & Restore Ward B (Pala Tree)",
-                desc: "The Pala tree ward is heavily disturbed. The entity is active in the canopy and tree perimeter. Avoid direct confrontation.",
-                hint: "Use [Ctrl] to crouch and break line of sight. Listen for audio cues. Restore Ward B."
+                title: "⑤ Restore Ward B — Pala Tree (DANGER)",
+                desc: "The Pala tree ward is heavily disturbed. Jess's spirit is agitated. Stay crouched.",
+                hint: "⚠ DANGER ZONE • Crouch [Ctrl] constantly • Use AYAS to track her position • Avoid direct sight"
             },
             {
                 id: 6,
-                title: "Objective 6: Recover Disappearance Evidence",
-                desc: "Search the ancestral house for 3 missing case files, ritual records, and previous researcher notes.",
-                hint: "Check the veranda desk, storage bin, and inner chambers. Press [Tab] to review collected evidence."
+                title: "⑥ Recover Disappearance Files",
+                desc: "Search the ancestral house for 3 missing case files, ritual records, and 1995 student logs.",
+                hint: "Check the veranda desk and inner rooms • [E] to collect • [B] Evidence Board • [Tab] Journal"
             },
             {
                 id: 7,
-                title: "Objective 7: Restore Ward C (Ancestral House)",
-                desc: "The final perimeter boundary around the house is compromised. Replace the grounding fuse before the entity breaches.",
-                hint: "Locate Ward Post C near the veranda and hold [E] to restore the grounding circuit."
+                title: "⑦ Restore Ward C — Ancestral House (CRITICAL)",
+                desc: "Final perimeter breach near the house. Replace the grounding circuit before she breaches the barrier.",
+                hint: "⚠ Ward C is on the house east flank • Hold [E] 2.5 sec to splice circuit"
             },
             {
                 id: 8,
-                title: "Objective 8: Escape Before Dawn",
-                desc: "Perimeter stabilized! Follow the Ayas directional vector toward the protected southern shrine before dawn.",
-                hint: "Sprint to the southern shrine clearing. Scatter Sacred Ash [G] if pursued!"
+                title: "⑧ ESCAPE TO THE KAVU SHRINE",
+                desc: "ALL 3 WARDS RESTORED! Follow the AYAS navigation arrow south to the sacred shrine before dawn!",
+                hint: "SPRINT SOUTH ON THE ROAD [Shift+W] • Scatter Sacred Ash [G] or Relic [V] if pursued • DON'T STOP!"
             }
         ];
     }
@@ -66,58 +76,114 @@ class QuestManager {
     }
 
     getCurrentObjective() {
-        return this.objectives[this.currentObjectiveIndex];
+        return this.objectives[this.currentObjectiveIndex] || this.objectives[this.objectives.length - 1];
     }
 
     completeObjective(expectedId) {
-        if (this.currentObjectiveIndex < this.objectives.length) {
-            const currentObj = this.objectives[this.currentObjectiveIndex];
-            if (currentObj.id === expectedId) {
-                this.currentObjectiveIndex++;
-                this.updateHUDObjective();
+        if (this.currentObjectiveIndex >= this.objectives.length) return;
+        const current = this.objectives[this.currentObjectiveIndex];
+        if (current.id !== expectedId) return;
 
-                if (window.HorrorAudio) {
-                    window.HorrorAudio.playAyasChime('ping');
-                }
+        this.currentObjectiveIndex++;
+        this.updateHUDObjective();
 
-                // Objective triggers & AI escalation
-                this.onObjectiveTransition(this.currentObjectiveIndex + 1);
-            }
+        if (window.HorrorAudio && typeof window.HorrorAudio.playAyasChime === 'function') {
+            window.HorrorAudio.playAyasChime('ping');
         }
+
+        if (window.GameplayApp) {
+            window.GameplayApp.showNotification(`✦ OBJECTIVE ${expectedId} COMPLETE`);
+        }
+
+        this._onObjectiveTransition(this.currentObjectiveIndex);
     }
 
-    onObjectiveTransition(newObjId) {
-        if (newObjId === 3) {
-            // Objective 3: Spawn Yakshi near Pala Tree
-            if (window.YakshiAI) {
-                window.YakshiAI.spawnAt(-14, 0, -68);
+    _onObjectiveTransition(newIdx) {
+        const newId = newIdx + 1; // next objective ID
+
+        // Auto-check already repaired wards (prevents getting stuck)
+        const wards = window.KeralaWorld?.wardStations;
+
+        if (newId === 4 && wards?.WardA?.state === 'Repaired') {
+            setTimeout(() => this.completeObjective(4), 600);
+            return;
+        }
+
+        if (newId === 5) {
+            if (wards?.WardB?.state === 'Repaired') {
+                setTimeout(() => this.completeObjective(5), 600);
+                return;
             }
-        } else if (newObjId === 5) {
-            // Objective 5: Yakshi stalks Pala tree area
-            if (window.YakshiAI) {
-                window.YakshiAI.state = 'Stalking';
+            const ghost = window.GhostAI || window.JessAI || window.YakshiAI;
+            if (ghost) {
+                ghost.stalkSpeed = 3.8;
+                ghost.lureCooldown = 8.0;
             }
-        } else if (newObjId === 8) {
-            // Objective 8: Climax escape chase!
-            if (window.YakshiAI) {
-                window.YakshiAI.state = 'Hunting';
-                window.YakshiAI.huntSpeed = 6.8;
+        }
+
+        if (newId === 3) {
+            const ghost = window.GhostAI || window.JessAI || window.YakshiAI;
+            if (ghost) {
+                setTimeout(() => ghost.spawnStoryEvent('pala_tree'), 1500);
             }
-            if (window.KeralaWorld) {
+            if (window.GameplayApp) {
+                window.GameplayApp._showHorrorSubtitle("[ A sudden chill stirs near the ancient Pala tree... ]");
+            }
+        }
+
+        // Objective 7 (Ward C) fail-safe auto-complete if already repaired
+        if (newId === 7) {
+            if (wards?.WardC?.state === 'Repaired') {
+                if (window.GameplayApp) {
+                    window.GameplayApp.showNotification("✦ WARD C ALREADY RESTORED — PERIMETER INTACT");
+                }
+                setTimeout(() => this.completeObjective(7), 800);
+                return;
+            }
+
+            const ghost = window.GhostAI || window.JessAI || window.YakshiAI;
+            if (ghost) {
+                ghost.spawnStoryEvent('house_breach');
+            }
+            if (window.KeralaWorld && typeof window.KeralaWorld.triggerLightning === 'function') {
                 window.KeralaWorld.triggerLightning();
+            }
+        }
+
+        if (newId === 8) {
+            // Verify all 3 wards are indeed repaired
+            let allRepaired = true;
+            if (wards) {
+                for (let k in wards) {
+                    if (wards[k].state !== 'Repaired' && wards[k].state !== 'Intact') {
+                        allRepaired = false;
+                    }
+                }
+            }
+
+            const ghost = window.GhostAI || window.JessAI || window.YakshiAI;
+            if (ghost) {
+                ghost.spawnStoryEvent('final_chase');
+            }
+
+            if (window.KeralaWorld && typeof window.KeralaWorld.triggerLightning === 'function') {
+                window.KeralaWorld.triggerLightning();
+                setTimeout(() => window.KeralaWorld.triggerLightning(), 1000);
+            }
+
+            if (window.GameplayApp) {
+                window.GameplayApp._showHorrorSubtitle("[ ALL 3 WARDS RESTORED — SPRINT TO THE KAVU SHRINE BEFORE DAWN! ]");
             }
         }
     }
 
     collectEvidence(item) {
-        if (!this.evidenceList.includes(item.id)) {
-            this.evidenceList.push(item.id);
-            this.evidenceCollectedCount++;
+        if (!item || this.evidenceList.includes(item.id)) return;
+        this.evidenceList.push(item.id);
+        this.evidenceCollectedCount++;
 
-            // Check Objective 6 (Recover 3 Evidence Items)
-            if (this.getCurrentObjective().id === 6 && this.evidenceCollectedCount >= 3) {
-                this.completeObjective(6);
-            }
+        if (this.getCurrentObjective().id === 6 && this.evidenceCollectedCount >= 3) {
+            this.completeObjective(6);
         }
     }
 
@@ -132,6 +198,12 @@ class QuestManager {
         if (titleEl) titleEl.innerText = obj.title;
         if (descEl) descEl.innerText = obj.desc;
         if (hintEl) hintEl.innerText = obj.hint;
+
+        const card = document.getElementById('objective-card');
+        if (card) {
+            card.style.borderLeftColor = '#d4a034';
+            setTimeout(() => { if (card) card.style.borderLeftColor = ''; }, 1500);
+        }
     }
 }
 

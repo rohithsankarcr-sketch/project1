@@ -1,12 +1,19 @@
 /**
- * AYAS: THE LAST WARD - Anomaly and Iron Integrity Monitor
+ * AYAS: THE LAST WARD - Anomaly and Iron Integrity Monitor MK-IV
  * Real-Time Signal Model, FFT Waveform Canvas, Needle Galvanometer & Calibration
+ * 
+ * Features:
+ * - Dynamic EMF reading linked directly to Jess's actual world position and state.
+ * - Thermal cold-spot drops near paranormal anomalies.
+ * - Audio lure waveform analysis.
+ * - Reactive iron ward directional needle navigation.
+ * - Stillness calibration requirement with progress tracking.
  */
 
 class AyasDetectorDevice {
     constructor() {
         this.isEquipped = true;
-        this.baselineField = 42.5; // Kerala ambient baseline in microtesla
+        this.baselineField = 42.5; // Kerala ambient baseline in microtesla (µT)
         this.currentField = 42.5;
         this.baselineDeviation = 0.0;
         this.ambientTemp = 28.5; // Celsius
@@ -20,7 +27,7 @@ class AyasDetectorDevice {
         this.calibrationRequired = 2.2; // seconds
 
         // Nearest Ward Bearing
-        this.nearestWardName = "None";
+        this.nearestWardName = "Ward A";
         this.nearestWardDist = 0.0;
         this.nearestWardBearing = 0.0;
 
@@ -38,24 +45,30 @@ class AyasDetectorDevice {
         if (this.canvas) {
             this.ctx = this.canvas.getContext('2d');
         }
+
+        // Ensure AYAS device panel is visible on start
+        const panel = document.getElementById('ayas-device-panel');
+        if (panel && this.isEquipped) {
+            panel.classList.add('active');
+        }
     }
 
     toggleEquipped() {
         this.isEquipped = !this.isEquipped;
         const panel = document.getElementById('ayas-device-panel');
         if (panel) {
-            if (this.isEquipped) {
-                panel.classList.remove('stowed');
-            } else {
-                panel.classList.add('stowed');
-            }
+            panel.classList.toggle('active', this.isEquipped);
         }
     }
 
     startCalibration(playerSpeed) {
-        if (playerSpeed > 0.4) {
-            return false; // Must be stationary
+        if (playerSpeed > 0.3) {
+            if (window.GameplayApp) {
+                window.GameplayApp._showHorrorSubtitle("[ Must remain stationary to calibrate baseline ]");
+            }
+            return false;
         }
+
         if (!this.isCalibrating) {
             this.isCalibrating = true;
             this.calibrationTimer = 0.0;
@@ -65,19 +78,23 @@ class AyasDetectorDevice {
     }
 
     stopCalibration() {
-        this.isCalibrating = false;
-        this.calibrationTimer = 0.0;
+        if (this.isCalibrating) {
+            this.isCalibrating = false;
+            this.calibrationTimer = 0.0;
+            const calEl = document.getElementById('meter-em-val');
+            if (calEl) calEl.innerText = `${this.currentField.toFixed(1)} µT`;
+        }
     }
 
-    registerVoiceLure(confidence = 0.88) {
+    registerVoiceLure(confidence = 0.94) {
         this.voiceConfidence = confidence;
-        this.voiceFadeTimer = 4.5;
-        if (window.HorrorAudio) {
+        this.voiceFadeTimer = 5.0;
+        if (window.HorrorAudio && typeof window.HorrorAudio.playAyasChime === 'function') {
             window.HorrorAudio.playAyasChime('ping');
         }
     }
 
-    update(delta, playerPos, playerFwd, yakshiPos, yakshiState) {
+    update(delta, playerPos, playerFwd, ghostPosOverride, ghostStateOverride) {
         if (!this.isEquipped) return;
 
         // 1. Calibration Update
@@ -90,35 +107,47 @@ class AyasDetectorDevice {
             if (this.calibrationTimer >= this.calibrationRequired) {
                 this.isCalibrating = false;
                 this.baselineField = this.currentField;
-                if (window.HorrorAudio) {
+                if (window.HorrorAudio && typeof window.HorrorAudio.playAyasChime === 'function') {
                     window.HorrorAudio.playAyasChime('calibrate');
                 }
+                if (window.GameplayApp) {
+                    window.GameplayApp.showNotification("✦ AYAS BASELINE CALIBRATED");
+                }
             }
+            this.renderWaveform(delta);
             return;
         }
 
-        // 2. Proximity to Yakshi & Electromagnetic Field Calculation
-        let distToYakshi = 999.0;
-        if (yakshiPos && yakshiState !== 'Dormant') {
-            distToYakshi = playerPos.distanceTo(yakshiPos);
+        // 2. Proximity to Active Ghost & Electromagnetic Field Calculation
+        const ghost = window.GhostAI || window.JessAI || window.YakshiAI;
+        const ghostPos = ghost ? ghost.position : ghostPosOverride;
+        const ghostState = ghost ? ghost.state : ghostStateOverride;
+
+        let distToGhost = 999.0;
+        if (ghostPos && ghostState !== 'Dormant') {
+            distToGhost = playerPos.distanceTo(ghostPos);
         }
 
         let anomalyFactor = 0.0;
-        if (distToYakshi < 32.0) {
-            anomalyFactor = Math.max(0.0, 1.0 - (distToYakshi / 32.0));
+        if (distToGhost < 32.0) {
+            anomalyFactor = Math.max(0.0, 1.0 - (distToGhost / 32.0));
+            // Severe spike when hunting or attacking
+            if (ghostState === 'Hunting' || ghostState === 'Attacking') {
+                anomalyFactor = Math.min(1.0, anomalyFactor * 1.35);
+            }
         }
 
-        // Add subtle sensor jitter
+        // Add subtle natural jitter
         const jitter = (Math.random() - 0.5) * 1.2;
         const targetEM = this.baselineField + (anomalyFactor * 138.0) + jitter;
         this.currentField += (targetEM - this.currentField) * Math.min(1.0, delta * 5.0);
         this.baselineDeviation = Math.abs(this.currentField - this.baselineField);
 
-        // 3. Thermal Cold-Spot Calculation
-        this.targetTemp = 28.5 - (anomalyFactor * 24.5); // drops down to 4.0 C
+        // 3. Thermal Cold-Spot Calculation (drops from 28.5 C down to 4.0 C)
+        this.targetTemp = 28.5 - (anomalyFactor * 24.5);
         this.ambientTemp += (this.targetTemp - this.ambientTemp) * Math.min(1.0, delta * 2.0);
 
-        // Cold overlay trigger
+        // Cold vignette trigger
         const overlay = document.getElementById('screen-overlay');
         if (overlay) {
             if (this.ambientTemp < 12.0) {
@@ -137,7 +166,7 @@ class AyasDetectorDevice {
         }
 
         // 5. Geiger Click Audio Timing
-        if (this.baselineDeviation > 6.0 && window.HorrorAudio) {
+        if (this.baselineDeviation > 6.0 && window.HorrorAudio && typeof window.HorrorAudio.playGeigerClick === 'function') {
             const interval = Math.max(0.06, 1.2 - (this.baselineDeviation / 95.0));
             this.geigerTimer += delta;
             if (this.geigerTimer >= interval) {
@@ -146,12 +175,14 @@ class AyasDetectorDevice {
             }
         }
 
-        // 6. Ward Integrity & Directional Vector
+        // 6. Ward Navigation Vector
         this.updateWardNavigation(playerPos, playerFwd);
 
-        // 7. Render Waveform & Update UI Elements
+        // 7. Render Waveform & HUD
         this.renderWaveform(delta);
         this.updateHUDDisplay();
+
+        return this.currentField;
     }
 
     updateWardNavigation(playerPos, playerFwd) {
@@ -175,7 +206,7 @@ class AyasDetectorDevice {
             this.nearestWardName = targetWard.id;
             this.nearestWardDist = nearestDist;
 
-            // Compute relative angle
+            // Relative bearing angle
             const toWard = new THREE.Vector3().subVectors(targetWard.worldPos, playerPos);
             toWard.y = 0;
             toWard.normalize();
@@ -192,8 +223,8 @@ class AyasDetectorDevice {
 
     renderWaveform(delta) {
         if (!this.ctx || !this.canvas) return;
-        const w = this.canvas.width = this.canvas.offsetWidth;
-        const h = this.canvas.height = this.canvas.offsetHeight;
+        const w = (this.canvas.width = this.canvas.offsetWidth || 200);
+        const h = (this.canvas.height = this.canvas.offsetHeight || 36);
 
         this.ctx.fillStyle = '#080c06';
         this.ctx.fillRect(0, 0, w, h);
@@ -201,12 +232,12 @@ class AyasDetectorDevice {
         this.wavePhase += delta * 12.0;
 
         this.ctx.lineWidth = 1.5;
-        this.ctx.strokeStyle = this.voiceConfidence > 0.5 ? '#ff3333' : '#ffaa00';
+        this.ctx.strokeStyle = this.voiceConfidence > 0.5 ? '#ff3333' : '#00f0ff';
         this.ctx.beginPath();
 
         const midY = h / 2;
         const freq = this.voiceConfidence > 0.5 ? 0.35 : 0.12;
-        const amp = midY * (0.15 + this.voiceConfidence * 0.75 + (this.baselineDeviation / 140.0) * 0.3);
+        const amp = midY * (0.15 + this.voiceConfidence * 0.75 + (this.baselineDeviation / 140.0) * 0.35);
 
         for (let x = 0; x < w; x++) {
             const noise = (Math.random() - 0.5) * (this.voiceConfidence > 0.5 ? 6 : 2);
@@ -241,7 +272,7 @@ class AyasDetectorDevice {
 
         if (voiceVal) {
             if (this.voiceConfidence > 0.5) {
-                voiceVal.innerText = `LURE SUSPECT (${Math.floor(this.voiceConfidence * 100)}%)`;
+                voiceVal.innerText = `ANOMALOUS (${Math.floor(this.voiceConfidence * 100)}%)`;
                 voiceVal.classList.add('alert');
             } else {
                 voiceVal.innerText = "AUTHENTIC";

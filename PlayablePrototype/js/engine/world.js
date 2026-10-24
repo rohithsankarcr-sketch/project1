@@ -589,6 +589,8 @@ class KeralaWorld {
             "Missing surveyor last seen near Pala tree at 2 AM...");
         this.createEvidenceItem(18 + 0.8, 1.2, -85 + 1.8, "Ev_03", "Ritual Copper Plate",
             "The Yakshi cannot permeate iron lines energized with sacred ash...");
+        this.createEvidenceItem(18 - 4.5, 1.2, -85 + 4.5, "Ev_04", "Tantric Consecration Folio",
+            "To seal the entity: all 3 iron perimeter wards must be spliced and energized before dawn.");
 
         this.scene.add(houseGroup);
     }

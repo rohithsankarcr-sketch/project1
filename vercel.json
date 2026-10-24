@@ -1,4 +1,8 @@
 {
   "version": 2,
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/PlayablePrototype", "destination": "/index.html" },
+    { "source": "/PlayablePrototype/(.*)", "destination": "/$1" }
+  ]
 }

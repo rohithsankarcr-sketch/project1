@@ -89,9 +89,13 @@ class AyasGameApplication {
         const container = document.getElementById('canvas-container');
         window.KeralaWorld.init(container);
         window.AyasDevice.init();
-        window.YakshiAI.init(window.KeralaWorld.scene);
+        if (window.WalkmanAnchor) window.WalkmanAnchor.init(window.KeralaWorld.scene);
+        const ghost = window.GhostAI || window.JessAI || window.YakshiAI;
+        if (ghost) ghost.init(window.KeralaWorld.scene);
         window.Quests.init();
         window.MinimapUI.init();
+        if (window.WeatherSystem) window.WeatherSystem.init();
+        if (window.LevelManager) window.LevelManager.startLevel(this.currentLevel);
 
         this.setupEventListeners();
         this.updateHUDStats();
@@ -131,12 +135,18 @@ class AyasGameApplication {
 
             if (e.code === 'KeyF') {
                 window.KeralaWorld.toggleFlashlight();
+                if (window.YakshiAdvanced) window.YakshiAdvanced.recordBehavior('flashlight');
+            } else if (e.code === 'KeyB') {
+                e.preventDefault();
+                this.toggleEvidenceBoardModal();
             } else if (e.code === 'KeyQ') {
                 if (window.AyasDevice) window.AyasDevice.toggleEquipped();
                 const panel = document.getElementById('ayas-device-panel');
                 if (panel && window.AyasDevice) panel.classList.toggle('active', window.AyasDevice.isEquipped);
             } else if (e.code === 'KeyG') {
                 this.deploySacredAsh();
+            } else if (e.code === 'KeyT') {
+                if (window.WalkmanAnchor) window.WalkmanAnchor.toggleCarry();
             } else if (e.code === 'KeyV') {
                 this.useRelic();
             } else if (e.code === 'Tab') {
@@ -168,6 +178,10 @@ class AyasGameApplication {
         document.getElementById('btn-restart')?.addEventListener('click', () => location.reload());
         document.getElementById('btn-retry-death')?.addEventListener('click', () => location.reload());
         document.getElementById('btn-close-journal')?.addEventListener('click', () => this.toggleJournalModal());
+        document.getElementById('btn-open-board-from-journal')?.addEventListener('click', () => {
+            this.toggleJournalModal();
+            this.toggleEvidenceBoardModal();
+        });
         document.getElementById('btn-win-restart')?.addEventListener('click', () => location.reload());
         document.getElementById('btn-close-evidence')?.addEventListener('click', () => this.closeEvidenceModal());
 
@@ -233,6 +247,19 @@ class AyasGameApplication {
                 currentEM || 0
             );
         }
+
+        // Concussion recovery
+        if (this.isConcussed) {
+            this.concussionTimer -= delta;
+            if (this.concussionTimer <= 0) {
+                this.isConcussed = false;
+                const ov = document.getElementById('screen-overlay');
+                if (ov) ov.style.filter = '';
+            }
+        }
+
+        // Path guidance arrow update
+        this.updatePathArrow();
 
         this.updateHUDStats();
         window.KeralaWorld.render();
@@ -378,6 +405,10 @@ class AyasGameApplication {
                     surface = 'stone'; // shrine
                 }
                 if (window.HorrorAudio) window.HorrorAudio.playFootstep(surface, this.isSprinting);
+                if (window.YakshiAdvanced) {
+                    window.YakshiAdvanced.investigateSound(this.playerPos, this.isSprinting ? 28 : 12);
+                    if (this.isSprinting) window.YakshiAdvanced.recordBehavior('sprint');
+                }
             }
         } else {
             this.headBobTimer = 0;
@@ -461,7 +492,24 @@ class AyasGameApplication {
             }
         }
 
-        // 3. Hiding Spots
+        // 3. Walkman Anchor Interaction
+        if (!foundInteractable && window.WalkmanAnchor && window.WalkmanAnchor.holder === 'world') {
+            const dist = this.playerPos.distanceTo(window.WalkmanAnchor.worldPos);
+            if (dist < 2.5) {
+                foundInteractable = true;
+                if (reticle) reticle.classList.add('active');
+                if (promptEl) {
+                    promptEl.innerText = "Press [E] — Pick Up Jess's Sports Walkman (15ft Anchor)";
+                    promptEl.classList.add('visible');
+                }
+                if (this.keys['KeyE'] && !this._interactDebounce) {
+                    this._interactDebounce = true;
+                    window.WalkmanAnchor.pickup();
+                }
+            }
+        }
+
+        // 4. Hiding Spots
         if (!foundInteractable) {
             for (const spot of window.KeralaWorld.hidingSpots) {
                 const dist = this.playerPos.distanceTo(spot.worldPos);
@@ -517,6 +565,9 @@ class AyasGameApplication {
         if (window.YakshiAI.position.distanceTo(ward.worldPos) < 26.0) {
             window.YakshiAI.disrupt(ward.worldPos);
         }
+        if (window.YakshiAdvanced) {
+            window.YakshiAdvanced.investigateSound(ward.worldPos, 35);
+        }
 
         // Add dynamic journal entry
         this._addJournalEntry(`[ WARD ${ward.id.replace('Ward','')} REPAIRED ]`,
@@ -538,6 +589,7 @@ class AyasGameApplication {
             this.playerPos.copy(spot.worldPos);
             window.KeralaWorld.camera.position.copy(this.playerPos);
             this._showHorrorSubtitle("[ HIDING — stay quiet, don't move ]");
+            if (window.YakshiAdvanced) window.YakshiAdvanced.recordBehavior('hide');
         } else {
             this.isHiding = false;
             this.playerPos.copy(spot.exitPos);
@@ -584,9 +636,14 @@ class AyasGameApplication {
         if (window.HorrorAudio) window.HorrorAudio.playAyasChime('calibrate');
         this.showNotification('✦ SACRED ASH DEPLOYED');
 
-        // Repel Yakshi
-        if (window.YakshiAI.position.distanceTo(this.playerPos) < 28.0) {
-            window.YakshiAI.disrupt(this.playerPos);
+        // Repel or panic Jess
+        const ghost = window.GhostAI || window.JessAI || window.YakshiAI;
+        if (ghost) {
+            if (typeof ghost.triggerPanic === 'function') {
+                ghost.triggerPanic("Sacred Ash Consecration");
+            } else {
+                ghost.disrupt(this.playerPos);
+            }
         }
 
         // Fade out
@@ -611,9 +668,33 @@ class AyasGameApplication {
             window.Quests.completeObjective(1);
         } else if (curId === 3 && this.playerPos.distanceTo(new THREE.Vector3(-11, 0, -65)) < 18.0) {
             window.Quests.completeObjective(3);
-        } else if (curId === 8 && window.KeralaWorld.shrineZone &&
-            this.playerPos.distanceTo(window.KeralaWorld.shrineZone.position) < window.KeralaWorld.shrineZone.radius) {
-            this.onPlayerWon();
+        } else if (curId === 4 && window.KeralaWorld?.wardStations?.WardA?.state === 'Repaired') {
+            window.Quests.completeObjective(4);
+        } else if (curId === 5 && window.KeralaWorld?.wardStations?.WardB?.state === 'Repaired') {
+            window.Quests.completeObjective(5);
+        } else if (curId === 7 && window.KeralaWorld?.wardStations?.WardC?.state === 'Repaired') {
+            window.Quests.completeObjective(7);
+        } else if (curId === 8 && window.KeralaWorld.shrineZone) {
+            const dist = this.playerPos.distanceTo(window.KeralaWorld.shrineZone.position);
+            if (dist < window.KeralaWorld.shrineZone.radius) {
+                // Verify all 3 wards repaired before allowing victory!
+                const wards = window.KeralaWorld.wardStations;
+                let allWardsRepaired = true;
+                if (wards) {
+                    for (let k in wards) {
+                        if (wards[k].state !== 'Repaired' && wards[k].state !== 'Intact') {
+                            allWardsRepaired = false;
+                        }
+                    }
+                }
+                if (allWardsRepaired) {
+                    if (!this.hasWon && !this.isDead) {
+                        this.onPlayerWon();
+                    }
+                } else {
+                    this._showHorrorSubtitle("[ Sanctuary barrier rejected — all 3 iron wards must be restored! ]");
+                }
+            }
         }
     }
 
@@ -690,6 +771,12 @@ class AyasGameApplication {
     }
 
     updateHUDStats() {
+        // Health bar
+        this.updateHealthUI();
+
+        // Level UI
+        this.updateLevelUI();
+
         // Stamina bar
         const staminaFill = document.getElementById('stamina-fill');
         if (staminaFill) {
@@ -702,6 +789,221 @@ class AyasGameApplication {
         const p2 = document.getElementById('ash-pouch-2');
         if (p1) p1.classList.toggle('available', this.sacredAshCount >= 1);
         if (p2) p2.classList.toggle('available', this.sacredAshCount >= 2);
+
+        // Relic charges
+        const relicInd = document.getElementById('relic-indicator');
+        const relicCnt = document.getElementById('relic-count');
+        if (relicInd) relicInd.style.display = this.hasRelicWeapon ? 'flex' : 'none';
+        if (relicCnt) relicCnt.innerText = this.relicCharges;
+    }
+
+    updateHealthUI() {
+        const healthFill = document.getElementById('health-fill');
+        const healthText = document.getElementById('health-text');
+        const pct = Math.max(0, Math.min(100, (this.health / this.maxHealth) * 100));
+        if (healthFill) {
+            healthFill.style.width = `${pct}%`;
+            if (pct <= 25) {
+                healthFill.style.background = 'linear-gradient(90deg, #ff0000, #ff2222)';
+                healthFill.style.boxShadow = '0 0 14px rgba(255,0,0,0.95)';
+            } else if (pct <= 50) {
+                healthFill.style.background = 'linear-gradient(90deg, #ff4400, #ff8833)';
+                healthFill.style.boxShadow = '0 0 10px rgba(255,68,0,0.8)';
+            } else {
+                healthFill.style.background = 'linear-gradient(90deg, #ff0000, #ff6666)';
+                healthFill.style.boxShadow = '0 0 10px rgba(255,0,0,0.6)';
+            }
+        }
+        if (healthText) {
+            healthText.innerText = `${Math.max(0, Math.ceil(this.health))}/${this.maxHealth}`;
+        }
+
+        // Blood vignette on screen
+        const bloodEl = document.getElementById('blood-vignette');
+        if (bloodEl) {
+            const dangerRatio = Math.max(0, 1.0 - (this.health / this.maxHealth));
+            if (dangerRatio > 0.05) {
+                bloodEl.style.boxShadow = `inset 0 0 ${80 * dangerRatio}px ${20 * dangerRatio}px rgba(220,10,10,${0.25 + 0.5 * dangerRatio})`;
+            } else {
+                bloodEl.style.boxShadow = '';
+            }
+        }
+    }
+
+    updateLevelUI() {
+        const levelEl = document.getElementById('level-indicator');
+        if (levelEl) {
+            if (this.currentLevel === 0) {
+                levelEl.innerText = 'TUTORIAL';
+            } else {
+                const entityName = window.LevelManager?.levelConfig[this.currentLevel]?.ghostType || `LEVEL ${this.currentLevel}`;
+                levelEl.innerText = `${entityName}`;
+            }
+        }
+    }
+
+    takeDamage(amount) {
+        if (this.isDead || this.hasWon || this.isHiding) return;
+        const now = performance.now() / 1000;
+        if (now - this.lastDamageTime < this.invulnTime) return;
+        this.lastDamageTime = now;
+
+        const effectiveDmg = amount * (this.difficultyMultiplier || 1.0);
+        this.health = Math.max(0, this.health - effectiveDmg);
+        this.updateHealthUI();
+
+        // Audio & Visual feedback
+        if (window.HorrorAudio) {
+            window.HorrorAudio.playAyasChime('alert');
+        }
+        this.triggerConcussion(2.6);
+
+        // Flash screen red
+        const ov = document.getElementById('screen-overlay');
+        if (ov) {
+            ov.classList.add('danger-flash');
+            setTimeout(() => { if (ov) ov.classList.remove('danger-flash'); }, 450);
+        }
+
+        this._showHorrorSubtitle(`[ CRITICAL: ENTITY ATTACKED — -${Math.round(effectiveDmg)} HP ]`);
+
+        if (this.health <= 0) {
+            this.health = 0;
+            this.updateHealthUI();
+            const attacker = (window.LevelManager && window.LevelManager.levelConfig[this.currentLevel]) 
+                ? window.LevelManager.levelConfig[this.currentLevel].ghostType 
+                : 'The Yakshi';
+            this.onPlayerDied(`${attacker} claimed your life on the Pala Road.`);
+        }
+    }
+
+    triggerConcussion(duration = 3.0) {
+        this.isConcussed = true;
+        this.concussionTimer = duration;
+        const ov = document.getElementById('screen-overlay');
+        if (ov) {
+            ov.style.filter = 'blur(2.5px) contrast(1.3) saturate(0.5)';
+        }
+    }
+
+    useRelic() {
+        if (!this.hasRelicWeapon || this.relicCharges <= 0) {
+            if (!this.hasRelicWeapon) {
+                this._showHorrorSubtitle("[ No Relic weapon acquired yet ]");
+            } else {
+                this._showHorrorSubtitle("[ Relic weapon depleted — 0 charges remaining ]");
+            }
+            return;
+        }
+
+        this.relicCharges--;
+        this.updateHUDStats();
+
+        // Disruption burst
+        if (window.YakshiAI) {
+            window.YakshiAI.disrupt(this.playerPos);
+            if (window.YakshiAI.state === 'Hunting') {
+                window.YakshiAI.state = 'Searching';
+            }
+        }
+        if (window.HorrorAudio) {
+            window.HorrorAudio.playWardRepairedSound();
+        }
+
+        // Destroy nearby cursed ghost objects
+        let destroyedCount = 0;
+        if (this.destroyableGhostObjects && this.destroyableGhostObjects.length > 0) {
+            for (let i = this.destroyableGhostObjects.length - 1; i >= 0; i--) {
+                const obj = this.destroyableGhostObjects[i];
+                if (obj && obj.position && this.playerPos.distanceTo(obj.position) < 12.0) {
+                    if (window.KeralaWorld && window.KeralaWorld.scene) {
+                        window.KeralaWorld.scene.remove(obj);
+                    }
+                    this.destroyableGhostObjects.splice(i, 1);
+                    destroyedCount++;
+                }
+            }
+        }
+
+        // Visual sacred flash
+        const ov = document.getElementById('screen-overlay');
+        if (ov) {
+            ov.style.background = 'radial-gradient(circle, rgba(212,160,52,0.6) 0%, rgba(0,240,255,0.2) 60%, rgba(0,0,0,0.95) 100%)';
+            setTimeout(() => { if (ov) ov.style.background = ''; }, 600);
+        }
+
+        if (destroyedCount > 0) {
+            this.showNotification(`⚡ RELIC PURGED ${destroyedCount} CURSED EFFIGIES`);
+        } else {
+            this.showNotification(`⚡ RELIC BURST DISRUPTED ENTITY`);
+        }
+    }
+
+    gainRelic(charges = 3) {
+        this.hasRelicWeapon = true;
+        this.relicCharges += charges;
+        this.updateHUDStats();
+        this.showNotification(`✦ SACRED IRON RELIC ACQUIRED [V] (${this.relicCharges} CHARGES)`);
+    }
+
+    updatePathArrow() {
+        const arrow = document.getElementById('path-arrow');
+        if (!arrow) return;
+
+        if (this.isDead || this.hasWon || this.isPaused || !this.isRunning || this._evidenceModalOpen) {
+            arrow.style.opacity = '0';
+            return;
+        }
+
+        let targetPos = null;
+        const currObj = window.Quests ? window.Quests.getCurrentObjective() : null;
+        if (currObj) {
+            if (currObj.id === 1) targetPos = new THREE.Vector3(18, 1.7, -84); // Tharavadu house
+            else if (currObj.id === 2 || currObj.id === 3) targetPos = new THREE.Vector3(-18, 1.7, -70); // Pala tree
+            else if (currObj.id === 4 && window.KeralaWorld?.wardStations?.WardA) targetPos = window.KeralaWorld.wardStations.WardA.worldPos;
+            else if (currObj.id === 5 && window.KeralaWorld?.wardStations?.WardB) targetPos = window.KeralaWorld.wardStations.WardB.worldPos;
+            else if (currObj.id === 7 && window.KeralaWorld?.wardStations?.WardC) targetPos = window.KeralaWorld.wardStations.WardC.worldPos;
+            else if (currObj.id === 8) targetPos = new THREE.Vector3(0, 1.7, -165); // Kavu shrine
+        }
+
+        if (!targetPos && window.AyasDevice && window.AyasDevice.nearestWardName !== "ALL STABLE") {
+            const ward = window.KeralaWorld?.wardStations[window.AyasDevice.nearestWardName];
+            if (ward) targetPos = ward.worldPos;
+        }
+
+        if (!targetPos) {
+            arrow.style.opacity = '0';
+            return;
+        }
+
+        const camFwd = new THREE.Vector3();
+        window.KeralaWorld.camera.getWorldDirection(camFwd);
+        camFwd.y = 0;
+        camFwd.normalize();
+
+        const toTarget = new THREE.Vector3().subVectors(targetPos, this.playerPos);
+        toTarget.y = 0;
+        const dist = toTarget.length();
+        toTarget.normalize();
+
+        if (dist < 3.2) {
+            arrow.style.opacity = '0';
+            return;
+        }
+
+        const angle = Math.atan2(toTarget.x * camFwd.z - toTarget.z * camFwd.x, toTarget.x * camFwd.x + toTarget.z * camFwd.z);
+        const deg = THREE.MathUtils.radToDeg(angle);
+
+        arrow.style.opacity = '0.75';
+        arrow.style.transform = `translate(-50%, -50%) rotate(${deg}deg) translateY(-135px)`;
+    }
+
+    toggleEvidenceBoardModal() {
+        if (window.EvidenceBoard && typeof window.EvidenceBoard.toggleModal === 'function') {
+            window.EvidenceBoard.toggleModal();
+        } else {
+            this.toggleJournalModal();
+        }
     }
 }
 

@@ -433,6 +433,110 @@ class HorrorAudioEngine {
         osc.start(now);
         osc.stop(now + 0.65);
     }
+
+    // 13. Audio Blackout: Ambient Ducking & Cassette Tape Hiss / Motor Hum
+    duckAmbient(duration = 4.0) {
+        if (!this.ctx || !this.ambienceBus) return;
+        const now = this.ctx.currentTime;
+
+        // Duck ambient sound down
+        this.ambienceBus.gain.setValueAtTime(this.ambienceVolume, now);
+        this.ambienceBus.gain.exponentialRampToValueAtTime(0.12, now + 0.4);
+        this.ambienceBus.gain.setValueAtTime(0.12, now + duration - 0.8);
+        this.ambienceBus.gain.exponentialRampToValueAtTime(this.ambienceVolume, now + duration);
+
+        // Low frequency cassette tape motor hum (58 Hz)
+        const humOsc = this.ctx.createOscillator();
+        const humGain = this.ctx.createGain();
+        humOsc.type = 'sine';
+        humOsc.frequency.setValueAtTime(58, now);
+        humGain.gain.setValueAtTime(0.001, now);
+        humGain.gain.linearRampToValueAtTime(0.18, now + 0.3);
+        humGain.gain.linearRampToValueAtTime(0.001, now + duration);
+        humOsc.connect(humGain);
+        humGain.connect(this.sfxBus);
+        humOsc.start(now);
+        humOsc.stop(now + duration + 0.1);
+
+        // Cassette Tape Hiss (Filtered noise)
+        const bufferSize = this.ctx.sampleRate * 2;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * 0.08;
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        noise.loop = true;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(3200, now);
+        filter.Q.setValueAtTime(1.2, now);
+
+        const hissGain = this.ctx.createGain();
+        hissGain.gain.setValueAtTime(0.001, now);
+        hissGain.gain.linearRampToValueAtTime(0.15, now + 0.3);
+        hissGain.gain.linearRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(hissGain);
+        hissGain.connect(this.sfxBus);
+        noise.start(now);
+        noise.stop(now + duration + 0.1);
+    }
+
+    // 14. Tactile Walkman Mechanical Click
+    playTapeClick() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.08);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.connect(gain);
+        gain.connect(this.sfxBus);
+        osc.start(now);
+        osc.stop(now + 0.1);
+    }
+
+    // 15. Tape Audio Glitch (Panic State)
+    playTapeGlitch() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.linearRampToValueAtTime(180, now + 0.3);
+        osc.frequency.linearRampToValueAtTime(1200, now + 0.6);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+        osc.connect(gain);
+        gain.connect(this.entityBus);
+        osc.start(now);
+        osc.stop(now + 0.85);
+    }
+
+    // 16. Disruption Screech
+    playDisruptionScream() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(1800, now);
+        osc.frequency.exponentialRampToValueAtTime(320, now + 1.2);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.3);
+        osc.connect(gain);
+        gain.connect(this.entityBus);
+        osc.start(now);
+        osc.stop(now + 1.35);
+    }
 }
 
 window.HorrorAudio = new HorrorAudioEngine();
