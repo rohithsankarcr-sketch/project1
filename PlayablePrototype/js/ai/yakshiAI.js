@@ -12,8 +12,8 @@ class YakshiEntity {
         this.velocity = new THREE.Vector3();
 
         // AI Speeds
-        this.stalkSpeed = 4.6;
-        this.huntSpeed = 8.5;
+        this.stalkSpeed = 5.5;
+        this.huntSpeed = 12.0;
         this.retreatSpeed = 12.0;
         this.currentSpeed = 0;
 
@@ -449,9 +449,15 @@ class YakshiEntity {
             this.mesh.lookAt(playerPos.x, this.mesh.position.y, playerPos.z);
             this._setOpacity(this._scaredAlpha);
             if (this._auraLight) this._auraLight.intensity = 1.8;
-            if (distToPlayer < 2.0) {
+            if (distToPlayer < 3.4) {
                 if (window.GameplayApp && typeof window.GameplayApp.takeDamage === 'function') {
-                    window.GameplayApp.takeDamage(20);
+                    window.GameplayApp.takeDamage(45);
+                    if (window.GameplayApp.health <= 0) {
+                        window.GameplayApp.health = 0;
+                        if (typeof window.GameplayApp.updateHealthUI === 'function') window.GameplayApp.updateHealthUI();
+                        window.GameplayApp.onPlayerDied('The entity caught you.');
+                        return;
+                    }
                 }
                 this.state = 'Searching';
                 this.searchTimer = 0.0;

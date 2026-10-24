@@ -196,6 +196,7 @@ class AyasGameApplication {
 
         // System updates
         window.KeralaWorld.updateRain(delta);
+        if (window.WeatherSystem) window.WeatherSystem.update(delta);
 
         const camFwd = new THREE.Vector3();
         window.KeralaWorld.camera.getWorldDirection(camFwd);
@@ -215,6 +216,7 @@ class AyasGameApplication {
 
         // Horror atmosphere
         this.updateHorrorFX(delta);
+        if (window.YakshiAdvanced) window.YakshiAdvanced.update(delta);
 
         // Objectives
         this.checkObjectiveZoneTriggers();
@@ -450,6 +452,7 @@ class AyasGameApplication {
                         item.collected = true;
                         item.mesh.visible = false;
                         window.Quests.collectEvidence(item);
+                        if (window.EvidenceBoard) window.EvidenceBoard.addClue({id:item.id||item.title, title:item.title, text:item.text});
                         if (window.HorrorAudio) window.HorrorAudio.playAyasChime('ping');
                         this._showEvidenceModal(item);
                     }
@@ -649,6 +652,10 @@ class AyasGameApplication {
     onPlayerWon() {
         this.hasWon = true;
         document.exitPointerLock();
+        if (window.EndingsManager) {
+            window.EndingsManager.triggerEnding();
+            return;
+        }
         const winScreen = document.getElementById('victory-screen');
         if (winScreen) winScreen.classList.add('active');
     }
@@ -702,66 +709,5 @@ window.addEventListener('DOMContentLoaded', () => {
     window.GameplayApp = new AyasGameApplication();
     window.GameplayApp.init();
 
-    updateHealthUI() {
-        const healthFill = document.getElementById('health-fill');
-        const healthText = document.getElementById('health-text');
-        if (healthFill) {
-            const pct = Math.max(0, (this.health / this.maxHealth) * 100);
-            healthFill.style.width = pct + '%';
-            if (pct < 25) {
-                healthFill.style.background = 'linear-gradient(90deg, #ff0000, #ff3333)';
-                healthFill.style.boxShadow = '0 0 10px rgba(255,0,0,0.9)';
-            } else if (pct < 50) {
-                healthFill.style.background = 'linear-gradient(90deg, #ff2200, #ff5533)';
-                healthFill.style.boxShadow = '0 0 8px rgba(255,34,0,0.8)';
-            }
-        }
-        if (healthText) healthText.innerText = Math.max(0, Math.floor(this.health)) + '/' + this.maxHealth;
-    }
-    updateLevelUI() {
-        const levelEl = document.getElementById('level-indicator');
-        if (levelEl) {
-            if (this.currentLevel === 0) levelEl.innerText = 'TUTORIAL';
-            else levelEl.innerText = this.currentLevel + ' / ' + this.maxLevels;
-        }
-    }
-    takeDamage(amount) {
-        const now = performance.now() / 1000;
-        if (now - this.lastDamageTime < this.invulnTime) return;
-        if (this.isDead || this.isHiding) return;
-        this.lastDamageTime = now;
-        this.health -= amount * this.difficultyMultiplier;
-        this.updateHealthUI();
-        if (this.health <= 0) {
-            this.health = 0;
-            this.updateHealthUI();
-            this.onPlayerDied('You died to a relentless entity.');
-        }
-    }
-
-
-    triggerConcussion(duration){
-        this.isConcussed = true;
-        this.concussionTimer = duration || 4.5;
-        if(window.KeralaWorld){
-            const ov=document.getElementById('screen-overlay');
-            if(ov){ ov.style.background='radial-gradient(circle, rgba(100,100,100,0.5) 0%, rgba(0,0,0,0.98) 100%)'; setTimeout(()=>{ov.style.background='';}, (duration||4.5)*900); }
-        }
-    }
-
-
-    useRelic(){
-        if(!this.hasRelicWeapon || this.relicCharges <= 0) return;
-        this.relicCharges--;
-        if(document.getElementById('relic-count')) document.getElementById('relic-count').innerText = this.relicCharges;
-        if(window.YakshiAI){ window.YakshiAI.disrupt(this.playerPos); if(window.YakshiAI.state === 'Hunting') window.YakshiAI.state = 'Searching'; }
-        if(window.HorrorAudio) window.HorrorAudio.playWardRepairedSound();
-    }
-    gainRelic(){
-        this.hasRelicWeapon = true;
-        this.relicCharges += 3;
-        const ind=document.getElementById('relic-indicator');
-        if(ind){ ind.style.display='flex'; document.getElementById('relic-count').innerText = this.relicCharges; }
-    }
 
 });

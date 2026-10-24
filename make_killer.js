@@ -1,0 +1,11 @@
+const fs=require('fs');
+const p='C:/Users/LOQ/Desktop/bhooo/PlayablePrototype/js/ai/yakshiAI.js';
+let c=fs.readFileSync(p,'utf8');
+c=c.replace('this.maxPursuitTime = 10.0;', 'this.maxPursuitTime = 35.0;');
+c=c.replace('this.huntSpeed = 8.5;', 'this.huntSpeed = 12.0;');
+c=c.replace('this.stalkSpeed = 4.6;', 'this.stalkSpeed = 5.5;');
+c=c.replace("if (distToPlayer < 2.0) {", "if (distToPlayer < 2.8) {");
+c=c.replace('window.GameplayApp.takeDamage(20);', 'window.GameplayApp.takeDamage(35);');
+c=c.replace('this.randomSpawnInterval = 6 + Math.random() * 8;', 'this.randomSpawnInterval = 4 + Math.random() * 6;');
+fs.writeFileSync(p,c);
+console.log('ok');
