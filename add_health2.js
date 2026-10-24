@@ -1,0 +1,12 @@
+const fs=require('fs');
+const p='C:/Users/LOQ/Desktop/bhooo/PlayablePrototype/js/main.js';
+let c=fs.readFileSync(p,'utf8');
+const old = `    updateHUDStats() {\n        const staminaFill = document.getElementById('stamina-fill');\n        const ashVal = document.getElementById('ash-count-val');\n\n        if (staminaFill) {\n            staminaFill.style.width = \`\${(this.stamina / this.maxStamina) * 100}%\`;\n            if (this.isExhausted) staminaFill.classList.add('exhausted');\n            else staminaFill.classList.remove('exhausted');\n        }\n\n        if (ashVal) {\n            ashVal.innerText = \`\${this.sacredAshCount}\`;\n        }\n    }`;
+const neu = `    updateHealthUI() {\n        const healthFill = document.getElementById('health-fill');\n        const healthText = document.getElementById('health-text');\n        if (healthFill) {\n            const pct = Math.max(0, (this.health / this.maxHealth) * 100);\n            healthFill.style.width = pct + '%';\n        }\n        if (healthText) healthText.innerText = Math.max(0, Math.floor(this.health)) + '/' + this.maxHealth;\n    }\n    updateLevelUI() {\n        const levelEl = document.getElementById('level-indicator');\n        if (levelEl) levelEl.innerText = this.currentLevel === 0 ? 'TUTORIAL' : (this.currentLevel + ' / ' + this.maxLevels);\n    }\n    takeDamage(amount) {\n        const now = performance.now()/1000;\n        if (now - this.lastDamageTime < this.invulnTime) return;\n        if (this.isDead || this.isHiding) return;\n        this.lastDamageTime = now;\n        this.health -= amount * this.difficultyMultiplier;\n        this.updateHealthUI();\n        if (this.health <= 0) { this.health = 0; this.updateHealthUI(); this.onPlayerDied('You died to a relentless entity.'); }\n    }\n    updateHUDStats() {\n        const staminaFill = document.getElementById('stamina-fill');\n        const ashVal = document.getElementById('ash-count-val');\n        if (staminaFill) {\n            staminaFill.style.width = \`\${(this.stamina / this.maxStamina) * 100}%\`;\n            if (this.isExhausted) staminaFill.classList.add('exhausted');\n            else staminaFill.classList.remove('exhausted');\n        }\n        if (ashVal) ashVal.innerText = \`\${this.sacredAshCount}\`;\n        this.updateHealthUI();\n    }`;
+if (c.indexOf(old) !== -1) {
+  c = c.split(old).join(neu);
+  fs.writeFileSync(p, c);
+  console.log('ok');
+} else {
+  console.log('no');
+}

@@ -145,7 +145,7 @@ class KeralaWorld {
 
     buildRoadAndTerrain() {
         // Wet muddy Kerala dirt road with geometric rutting
-        const groundGeo = new THREE.PlaneGeometry(130, 300, 60, 60);
+        const groundGeo = new THREE.PlaneGeometry(220, 500, 90, 90);
         groundGeo.rotateX(-Math.PI / 2);
 
         const pos = groundGeo.attributes.position;
@@ -165,21 +165,21 @@ class KeralaWorld {
             metalness: 0.18
         });
         const ground = new THREE.Mesh(groundGeo, groundMat);
-        ground.position.set(0, 0, -95);
+        ground.position.set(0, 0, -150);
         ground.receiveShadow = true;
         this.scene.add(ground);
 
         // Laterite-red earth shoulders (the distinctive Kerala red soil)
         const shoulderMat = new THREE.MeshStandardMaterial({ color: 0x3a1508, roughness: 0.95 });
-        const leftShoulder = new THREE.Mesh(new THREE.PlaneGeometry(20, 300), shoulderMat);
+        const leftShoulder = new THREE.Mesh(new THREE.PlaneGeometry(35, 500), shoulderMat);
         leftShoulder.rotateX(-Math.PI / 2);
-        leftShoulder.position.set(-15, -0.05, -95);
+        leftShoulder.position.set(-32, -0.05, -150);
         leftShoulder.receiveShadow = true;
         this.scene.add(leftShoulder);
 
         const rightShoulder = new THREE.Mesh(new THREE.PlaneGeometry(20, 300), shoulderMat);
         rightShoulder.rotateX(-Math.PI / 2);
-        rightShoulder.position.set(15, -0.05, -95);
+        rightShoulder.position.set(32, -0.05, -150);
         rightShoulder.receiveShadow = true;
         this.scene.add(rightShoulder);
 

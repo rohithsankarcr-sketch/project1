@@ -66,7 +66,7 @@ class HorrorAudioEngine {
         }
     }
 
-    // 1. Procedural Monsoon Rain (Continuous Band-passed White Noise + Random Droplet Transients)
+    // 1. Procedural Monsoon Rain
     startKeralaMonsoonAmbience() {
         if (!this.ctx || this.isRainPlaying) return;
         this.isRainPlaying = true;
@@ -82,27 +82,25 @@ class HorrorAudioEngine {
         whiteNoise.buffer = noiseBuffer;
         whiteNoise.loop = true;
 
-        // Bandpass filter centered around 1400Hz to simulate rain on leaves & tiled roofs
         const bandpass = this.ctx.createBiquadFilter();
         bandpass.type = 'bandpass';
-        bandpass.frequency.setValueAtTime(1400, this.ctx.currentTime);
-        bandpass.Q.setValueAtTime(0.8, this.ctx.currentTime);
+        bandpass.frequency.setValueAtTime(1600, this.ctx.currentTime);
+        bandpass.Q.setValueAtTime(0.7, this.ctx.currentTime);
 
         const rainGain = this.ctx.createGain();
-        rainGain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+        rainGain.gain.setValueAtTime(0.42, this.ctx.currentTime);
 
         whiteNoise.connect(bandpass);
         bandpass.connect(rainGain);
         rainGain.connect(this.ambienceBus);
         whiteNoise.start();
 
-        // Wind Layer (Low-frequency modulated pink noise)
         const windFilter = this.ctx.createBiquadFilter();
         windFilter.type = 'lowpass';
-        windFilter.frequency.setValueAtTime(280, this.ctx.currentTime);
+        windFilter.frequency.setValueAtTime(320, this.ctx.currentTime);
 
         const windGain = this.ctx.createGain();
-        windGain.gain.setValueAtTime(0.22, this.ctx.currentTime);
+        windGain.gain.setValueAtTime(0.28, this.ctx.currentTime);
 
         const windSource = this.ctx.createBufferSource();
         windSource.buffer = noiseBuffer;
@@ -112,12 +110,15 @@ class HorrorAudioEngine {
         windGain.connect(this.ambienceBus);
         windSource.start();
 
-        // Occasional distant thunder rumble
+        // Occasional thunder
         setInterval(() => {
-            if (Math.random() < 0.25) {
+            if (Math.random() < 0.18) {
                 this.playDistantThunder();
+                if (window.KeralaWorld && typeof window.KeralaWorld.triggerLightning === 'function') {
+                    window.KeralaWorld.triggerLightning();
+                }
             }
-        }, 18000);
+        }, 15000);
     }
 
     // 2. Kerala Night Crickets & Cicadas (Ducks when Yakshi is Stalking!)

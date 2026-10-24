@@ -12,7 +12,7 @@ class YakshiEntity {
         this.velocity = new THREE.Vector3();
 
         // AI Speeds
-        this.stalkSpeed = 3.8;
+        this.stalkSpeed = 4.6;
         this.huntSpeed = 8.5;
         this.retreatSpeed = 12.0;
         this.currentSpeed = 0;
@@ -431,36 +431,38 @@ class YakshiEntity {
             return;
         }
 
-        // HUNTING — charging at player
+        // HUNTING
         if (this.state === 'Hunting') {
-            if (isPlayerHiding) {
+            if (typeof this.pursuitTimer === 'undefined') this.pursuitTimer = 0;
+            this.pursuitTimer += delta;
+            if (isPlayerHiding || this.pursuitTimer > this.maxPursuitTime || distToPlayer > 32.0) {
                 this.state = 'Searching';
                 this.searchTimer = 0.0;
+                this.pursuitTimer = 0;
                 return;
             }
-
             const dir = new THREE.Vector3().subVectors(playerPos, this.position).normalize();
             dir.y = 0;
             this.position.addScaledVector(dir, this.huntSpeed * delta);
             this.mesh.position.x = this.position.x;
             this.mesh.position.z = this.position.z;
             this.mesh.lookAt(playerPos.x, this.mesh.position.y, playerPos.z);
-
-            // Ensure fully visible when hunting
             this._setOpacity(this._scaredAlpha);
             if (this._auraLight) this._auraLight.intensity = 1.8;
-
-            // Attack check
-            if (distToPlayer < 1.5) {
-                this._triggerAttack();
+            if (distToPlayer < 2.0) {
+                if (window.GameplayApp && typeof window.GameplayApp.takeDamage === 'function') {
+                    window.GameplayApp.takeDamage(20);
+                }
+                this.state = 'Searching';
+                this.searchTimer = 0.0;
+                this.pursuitTimer = 0;
                 return;
             }
-
-            // Lost sight
-            if (!this.hasLineOfSight && distToPlayer > 20.0) {
+            if (!this.hasLineOfSight && distToPlayer > 15.0) {
                 this.state = 'Searching';
                 this.searchTimer = 0.0;
                 this.lastKnownPlayerPos.copy(playerPos);
+                this.pursuitTimer = 0;
             }
             return;
         }

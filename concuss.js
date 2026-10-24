@@ -1,0 +1,6 @@
+const fs=require('fs');
+const p='C:/Users/LOQ/Desktop/bhooo/PlayablePrototype/js/ai/yakshiAI.js';
+let c=fs.readFileSync(p,'utf8');
+const old = "        // Full-screen red flash\n        this._showJumpScareOverlay();\n\n        setTimeout(() => {\n            if (window.GameplayApp) {\n                window.GameplayApp.onPlayerDied(\"The Yakshi claimed your life along the Pala Road.\");\n            }\n        }, 600);";
+const neu = "        // Full-screen red flash\n        this._showJumpScareOverlay();\n\n        setTimeout(() => {\n            if (window.GameplayApp) {\n                if (typeof window.GameplayApp.triggerConcussion === 'function') {\n                    window.GameplayApp.triggerConcussion(4.5);\n                }\n                window.GameplayApp.playerPos.x += (Math.random()-0.5)*14;\n                window.GameplayApp.playerPos.z += (Math.random()-0.5)*14;\n                if (window.KeralaWorld && window.KeralaWorld.camera) {\n                    window.KeralaWorld.camera.position.copy(window.GameplayApp.playerPos);\n                }\n            }\n        }, 650);";
+if(c.indexOf(old)!==-1){ c=c.split(old).join(neu); fs.writeFileSync(p,c); console.log('ok'); } else console.log('no');

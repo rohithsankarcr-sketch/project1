@@ -28,6 +28,12 @@ class AyasGameApplication {
         this.isCrouched = false;
         this.isHiding = false;
 
+        // Health
+        this.maxHealth = 100;
+        this.health = 100;
+        this.lastDamageTime = 0;
+        this.invulnTime = 0.8;
+
         // Stamina
         this.maxStamina = 100.0;
         this.stamina = 100.0;
@@ -35,6 +41,13 @@ class AyasGameApplication {
 
         // Sacred Ash
         this.sacredAshCount = 2;
+
+        // Level System
+        this.currentLevel = 0; // Start with tutorial
+        this.maxLevels = 5;
+        this.difficultyMultiplier = 0.3;
+        this.hasRelicWeapon = false;
+        this.relicCharges = 0;
 
         // Input
         this.keys = {};
@@ -52,8 +65,8 @@ class AyasGameApplication {
         this._interactDebounce = false;
 
         // Horror FX state
-        this.coldVigorLevel = 0.0;   // 0-1, how cold/near is Yakshi
-        this.fearLevel = 0.0;        // 0-1 accumulates when hunting
+        this.coldVigorLevel = 0.0;
+        this.fearLevel = 0.0;
         this._breathTimer = 0.0;
         this._lastFear = 0.0;
 
@@ -66,6 +79,10 @@ class AyasGameApplication {
         // Evidence modal queue
         this._pendingEvidence = null;
         this._evidenceModalOpen = false;
+        this.isConcussed = false;
+        this.concussionTimer = 0;
+        this.abilities = [];
+        this.destroyableGhostObjects = [];
     }
 
     init() {
@@ -115,12 +132,13 @@ class AyasGameApplication {
             if (e.code === 'KeyF') {
                 window.KeralaWorld.toggleFlashlight();
             } else if (e.code === 'KeyQ') {
-                window.AyasDevice.toggleEquipped();
-                // Toggle panel visibility
+                if (window.AyasDevice) window.AyasDevice.toggleEquipped();
                 const panel = document.getElementById('ayas-device-panel');
-                if (panel) panel.classList.toggle('active', window.AyasDevice.isEquipped);
+                if (panel && window.AyasDevice) panel.classList.toggle('active', window.AyasDevice.isEquipped);
             } else if (e.code === 'KeyG') {
                 this.deploySacredAsh();
+            } else if (e.code === 'KeyV') {
+                this.useRelic();
             } else if (e.code === 'Tab') {
                 e.preventDefault();
                 this.toggleJournalModal();
@@ -128,7 +146,7 @@ class AyasGameApplication {
                 e.preventDefault();
                 if (!this._evidenceModalOpen) this.togglePauseMenu();
             } else if (e.code === 'KeyE' && this._evidenceModalOpen) {
-                this.closeEvidenceModal();
+                if (typeof this.closeEvidenceModal === 'function') this.closeEvidenceModal();
             }
         });
 
@@ -683,4 +701,67 @@ class AyasGameApplication {
 window.addEventListener('DOMContentLoaded', () => {
     window.GameplayApp = new AyasGameApplication();
     window.GameplayApp.init();
+
+    updateHealthUI() {
+        const healthFill = document.getElementById('health-fill');
+        const healthText = document.getElementById('health-text');
+        if (healthFill) {
+            const pct = Math.max(0, (this.health / this.maxHealth) * 100);
+            healthFill.style.width = pct + '%';
+            if (pct < 25) {
+                healthFill.style.background = 'linear-gradient(90deg, #ff0000, #ff3333)';
+                healthFill.style.boxShadow = '0 0 10px rgba(255,0,0,0.9)';
+            } else if (pct < 50) {
+                healthFill.style.background = 'linear-gradient(90deg, #ff2200, #ff5533)';
+                healthFill.style.boxShadow = '0 0 8px rgba(255,34,0,0.8)';
+            }
+        }
+        if (healthText) healthText.innerText = Math.max(0, Math.floor(this.health)) + '/' + this.maxHealth;
+    }
+    updateLevelUI() {
+        const levelEl = document.getElementById('level-indicator');
+        if (levelEl) {
+            if (this.currentLevel === 0) levelEl.innerText = 'TUTORIAL';
+            else levelEl.innerText = this.currentLevel + ' / ' + this.maxLevels;
+        }
+    }
+    takeDamage(amount) {
+        const now = performance.now() / 1000;
+        if (now - this.lastDamageTime < this.invulnTime) return;
+        if (this.isDead || this.isHiding) return;
+        this.lastDamageTime = now;
+        this.health -= amount * this.difficultyMultiplier;
+        this.updateHealthUI();
+        if (this.health <= 0) {
+            this.health = 0;
+            this.updateHealthUI();
+            this.onPlayerDied('You died to a relentless entity.');
+        }
+    }
+
+
+    triggerConcussion(duration){
+        this.isConcussed = true;
+        this.concussionTimer = duration || 4.5;
+        if(window.KeralaWorld){
+            const ov=document.getElementById('screen-overlay');
+            if(ov){ ov.style.background='radial-gradient(circle, rgba(100,100,100,0.5) 0%, rgba(0,0,0,0.98) 100%)'; setTimeout(()=>{ov.style.background='';}, (duration||4.5)*900); }
+        }
+    }
+
+
+    useRelic(){
+        if(!this.hasRelicWeapon || this.relicCharges <= 0) return;
+        this.relicCharges--;
+        if(document.getElementById('relic-count')) document.getElementById('relic-count').innerText = this.relicCharges;
+        if(window.YakshiAI){ window.YakshiAI.disrupt(this.playerPos); if(window.YakshiAI.state === 'Hunting') window.YakshiAI.state = 'Searching'; }
+        if(window.HorrorAudio) window.HorrorAudio.playWardRepairedSound();
+    }
+    gainRelic(){
+        this.hasRelicWeapon = true;
+        this.relicCharges += 3;
+        const ind=document.getElementById('relic-indicator');
+        if(ind){ ind.style.display='flex'; document.getElementById('relic-count').innerText = this.relicCharges; }
+    }
+
 });

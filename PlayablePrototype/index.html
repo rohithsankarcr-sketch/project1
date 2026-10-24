@@ -662,6 +662,13 @@
             <div id="reticle"></div>
             <div id="interaction-prompt">Press [E] to Inspect</div>
         </div>
+        
+        <!-- Path Guidance Arrow -->
+        <div id="path-arrow" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; opacity:0; transition:opacity 0.3s;">
+            <svg width="40" height="60" viewBox="0 0 40 60">
+                <polygon points="20,0 5,25 15,25 15,60 25,60 25,25 35,25" fill="rgba(0,240,255,0.8)" stroke="rgba(255,255,255,0.9)" stroke-width="1"/>
+            </svg>
+        </div>
 
         <!-- Hold Progress Bar -->
         <div id="hold-progress-bar">
@@ -670,6 +677,13 @@
 
         <!-- Bottom-left: Player Status -->
         <div id="bottom-bar">
+            <div class="status-row">
+                <span class="status-label">HEALTH</span>
+                <div class="status-bar-bg">
+                    <div id="health-fill" class="status-bar-fill" style="width:100%; background: linear-gradient(90deg, #ff1111, #ff5555); box-shadow: 0 0 8px rgba(255,0,0,0.7);"></div>
+                </div>
+                <span id="health-text" style="font-family:var(--mono); font-size:9px; color:#ff6666;">100/100</span>
+            </div>
             <div class="status-row">
                 <span class="status-label">STAMINA</span>
                 <div class="status-bar-bg">
@@ -680,6 +694,13 @@
                 <span class="status-label">SACRED ASH</span>
                 <div id="ash-pouch-1" class="ash-pouch available"></div>
                 <div id="ash-pouch-2" class="ash-pouch available"></div>
+            </div>
+            <div id="relic-indicator" style="display:none; align-items:center; gap:8px; margin-top:4px; background:rgba(212,160,52,0.1); padding:2px 6px; border:1px solid rgba(212,160,52,0.4);">
+                <span style="font-family:var(--mono); font-size:9px; color:var(--gold); letter-spacing:1px;">RELIC [V]</span>
+                <span id="relic-count" style="font-family:var(--mono); font-size:10px; color:#ffaa00;">0</span>
+            </div>
+            <div style="font-family:var(--mono); font-size:9px; color:var(--cyan); letter-spacing:1px; margin-top:4px;">
+                LEVEL: <span id="level-indicator">TUTORIAL</span>
             </div>
         </div>
 
@@ -740,12 +761,13 @@
         <div class="start-divider"></div>
         <p class="intro-lore">
             Southern Kerala, 1994. A stormy monsoon night on the abandoned Pala Road.<br>
-            You carry the prototype <strong>AYAS Anomaly Detector</strong>. The villagers have been disappearing.<br>
-            There are voices in the rain. There is a woman near the ancient tree.<br>
-            <em style="color: rgba(255,100,100,0.7); font-size:13px;">She is real. She is watching. She is already here.</em>
+            You carry the prototype <strong>AYAS Anomaly Detector</strong>.<br><br>
+            <strong style="color:#00f0ff">TUTORIAL + 5 LEVELS</strong> - Difficulty increases each level.<br>
+            <strong style="color:#d4a034">REAL ENTITIES</strong> - Referenced from horror films, games &amp; series.<br>
+            <em style="color: rgba(255,50,50,0.9); font-size:13px;">They hunt. They attack. Survive or die.</em>
         </p>
         <div class="start-divider"></div>
-        <div class="click-prompt">CLICK TO ENTER THE PALA ROAD</div>
+        <div class="click-prompt">CLICK TO START TUTORIAL</div>
         <div class="start-warning">⚠ HEADPHONES STRONGLY RECOMMENDED — CONTAINS HORROR AUDIO</div>
     </div>
 
@@ -861,6 +883,7 @@
     <script src="js/items/ayasDetector.js"></script>
     <script src="js/ai/yakshiAI.js"></script>
     <script src="js/systems/questManager.js"></script>
+    <script src="js/systems/levelManager.js"></script>
     <script src="js/ui/minimap.js"></script>
     <script src="js/main.js"></script>
 </body>

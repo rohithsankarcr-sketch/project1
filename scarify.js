@@ -1,0 +1,10 @@
+const fs=require('fs');
+const p='C:/Users/LOQ/Desktop/bhooo/PlayablePrototype/js/ai/yakshiAI.js';
+let c=fs.readFileSync(p,'utf8');
+c=c.replace('this._scaredAlpha = 0.96;', 'this._scaredAlpha = 1.0;');
+c=c.replace('this.stalkSpeed = 3.0;', 'this.stalkSpeed = 4.6;');
+c=c.replace('this.huntSpeed = 6.5;', 'this.huntSpeed = 9.2;');
+c=c.replace('this.randomSpawnInterval = 8 + Math.random() * 10;', 'this.randomSpawnInterval = 6 + Math.random() * 8;');
+c=c.replace('this.jumpScareCooldown = 9.0;', 'this.jumpScareCooldown = 6.0;');
+fs.writeFileSync(p,c);
+console.log('ok');

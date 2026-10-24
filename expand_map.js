@@ -1,0 +1,10 @@
+const fs=require('fs');
+const p='C:/Users/LOQ/Desktop/bhooo/PlayablePrototype/js/engine/world.js';
+let c=fs.readFileSync(p,'utf8');
+c=c.replace('new THREE.PlaneGeometry(130, 300, 60, 60)','new THREE.PlaneGeometry(220, 500, 90, 90)');
+c=c.replace('ground.position.set(0, 0, -95);','ground.position.set(0, 0, -150);');
+c=c.replace('new THREE.PlaneGeometry(20, 300)','new THREE.PlaneGeometry(35, 500)');
+c=c.replace('leftShoulder.position.set(-15, -0.05, -95);','leftShoulder.position.set(-32, -0.05, -150);');
+c=c.replace('rightShoulder.position.set(15, -0.05, -95);','rightShoulder.position.set(32, -0.05, -150);');
+fs.writeFileSync(p,c);
+console.log('ok');
